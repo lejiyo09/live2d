@@ -4,7 +4,7 @@ import {
   type Command, type HistoryState, type NodeId, type Project, type SelectMode, type Selection,
 } from '@l2s/editor-core';
 import { PACKAGE_EXTENSION, ProjectStore, checkIntegrity, readPackage, writePackage, type ProjectSummary, type StoredAsset } from '@l2s/project-format';
-import type { ImportWarning } from '@l2s/psd-importer';
+import { encodePng, type ImportWarning } from '@l2s/psd-importer';
 import type { StudioRenderer, CameraState, Pose } from '@l2s/rendering-engine';
 import { evaluateModel, type EvaluatedModel } from '@l2s/deformer-engine';
 import { applyExpressions, defaultValues, normalizeValue, resolveValues, type ParameterValues } from '@l2s/parameter-engine';
@@ -92,6 +92,26 @@ const get = useEditor.getState;
 // ------------------------------------------------------------------ history
 
 let suppressDirty = false;
+/**
+ * Texture resolution for the GPU (spec §13.2): 'auto' halves textures when
+ * the project's layer pixels exceed a budget derived from device memory.
+ */
+/** Product name; hosted demos override it with VITE_APP_NAME. */
+export const APP_NAME: string = (import.meta.env.VITE_APP_NAME as string | undefined) || 'Live2D Studio';
+
+export function textureScaleFor(project: Project): number {
+  let q = 'auto';
+  try { q = (JSON.parse(localStorage.getItem('l2s:prefs') ?? '{}') as { textureQuality?: string }).textureQuality ?? 'auto'; } catch { /* default */ }
+  if (q === 'full') return 1;
+  if (q === 'half') return 0.5;
+  if (q === 'quarter') return 0.25;
+  let px = 0;
+  for (const n of Object.values(project.nodes)) if (n.kind === 'layer' && !n.assets.display.startsWith('builtin:')) px += n.bounds.width * n.bounds.height;
+  const gb = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
+  const budget = gb * 24e6; // ≈ 96 MB of RGBA per GB of device memory
+  return px <= budget ? 1 : Math.max(0.25, Math.sqrt(budget / px));
+}
+
 /** Layer drawn at its rest pose (mesh topology editing). */
 let restOverride: NodeId | null = null;
 
@@ -256,12 +276,40 @@ export const editor = {
     reevaluate(history.project, get().paramValues);
   },
 
+  /** Straight-alpha RGBA of a layer's original pixels (decoded from storage). */
+  async layerPixels(layerId: NodeId): Promise<{ rgba: Uint8ClampedArray; width: number; height: number } | null> {
+    const n = history.project.nodes[layerId];
+    if (n?.kind !== 'layer') return null;
+    const [a] = await store.getAssets(history.project.id, [n.assets.original]);
+    if (!a) return null;
+    const bmp = await createImageBitmap(a.blob, { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+    const c = new OffscreenCanvas(bmp.width, bmp.height);
+    const g = c.getContext('2d', { willReadFrequently: true })!;
+    g.drawImage(bmp, 0, 0);
+    const d = g.getImageData(0, 0, bmp.width, bmp.height);
+    bmp.close();
+    return { rgba: d.data, width: d.width, height: d.height };
+  },
+
+  /** Store new layer images (lossless PNG) and upload them as textures. */
+  async addLayerAssets(items: Array<{ id: string; rgba: Uint8ClampedArray; width: number; height: number }>) {
+    const assets = items.map((it) => ({ id: it.id, kind: 'layer-original' as const, mime: 'image/png', width: it.width, height: it.height, blob: new Blob([encodePng(it.width, it.height, it.rgba, 3) as Uint8Array<ArrayBuffer>], { type: 'image/png' }) }));
+    await store.putAssets(history.project.id, assets);
+    for (const it of items) {
+      const bmp = await createImageBitmap(new ImageData(new Uint8ClampedArray(it.rgba), it.width, it.height), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+      const alpha = new Uint8Array(it.width * it.height);
+      for (let i = 0; i < alpha.length; i++) alpha[i] = it.rgba[i * 4 + 3]!;
+      renderer?.textures.add(it.id, bmp, alpha);
+    }
+  },
+
   /** Decode the project's display textures into another renderer (split view). */
   async loadTexturesInto(r: StudioRenderer) {
     const project = history.project;
     const ids = new Set<string>();
     for (const n of Object.values(project.nodes)) if (n.kind === 'layer') ids.add(n.assets.display);
     const assets = await store.getAssets(project.id, ids);
+    r.textures.uploadScale = textureScaleFor(project);
     for (let i = 0; i < assets.length; i += 8) await Promise.all(assets.slice(i, i + 8).map((a) => r.textures.addFromBlob(a.id, a.blob)));
     r.sync(history.project, get().model);
   },
@@ -306,6 +354,7 @@ export const editor = {
 
       set({ importing: { fileName, phase: 'upload', done: 0, total: result.displays.length } });
       renderer?.textures.clear();
+      if (renderer) renderer.textures.uploadScale = textureScaleFor(result.project);
       // Upload in small batches and yield, so the UI keeps painting on large PSDs.
       for (let i = 0; i < result.displays.length; i += 12) {
         const batch = result.displays.slice(i, i + 12);
@@ -430,6 +479,20 @@ export const editor = {
     log('error', `Unsupported file type: ${file.name}`);
   },
 
+  /** Loads the bundled, generated sample character (our own test art, not Live2D material). */
+  async openSample() {
+    try {
+      // Hosts that only serve web media types get a base64 copy (VITE_SAMPLE_URL=…/sample-character.psd.b64.txt).
+      const url = (import.meta.env.VITE_SAMPLE_URL as string | undefined) || `${import.meta.env.BASE_URL}samples/sample-character.psd`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const bytes = url.endsWith('.b64.txt') ? Uint8Array.from(atob((await res.text()).trim()), (c) => c.charCodeAt(0)) : await res.blob();
+      await editor.importPsd(new File([bytes], 'sample-character.psd', { type: 'image/vnd.adobe.photoshop' }));
+    } catch (e) {
+      log('error', `Could not load the sample: ${(e as Error).message}`);
+    }
+  },
+
   async restoreLastSession() {
     const id = localStorage.getItem('l2s:lastProject');
     const list = await store.list().catch(() => []);
@@ -467,6 +530,8 @@ async function loadTextures(project: Project, provided?: StoredAsset[]) {
   for (const n of Object.values(project.nodes)) if (n.kind === 'layer') ids.add(n.assets.display);
   const assets = provided ? provided.filter((a) => ids.has(a.id)) : await store.getAssets(project.id, ids);
   renderer?.textures.clear();
+  if (renderer) renderer.textures.uploadScale = textureScaleFor(project);
+  if (renderer && renderer.textures.uploadScale < 1) log('info', `Textures uploaded at ${Math.round(renderer.textures.uploadScale * 100)}% resolution to fit device memory (Settings → Preferences → Texture quality).`);
   let done = 0;
   set({ importing: { fileName: project.name, phase: 'upload', done, total: assets.length } });
   try {

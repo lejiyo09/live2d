@@ -309,3 +309,13 @@ code { font-family: var(--mono); font-size: 11px; background: #1a1c21; padding: 
 .scene-row .tl-lane { background: rgba(255,255,255,.02); }
 .scene-clip { position: absolute; top: 3px; bottom: 3px; background: #2f4f7a; border: 1px solid #4f7fbf; border-radius: 3px; padding: 0 6px; font-size: 11px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: grab; }
 .scene-clip.sel { border-color: #fff; background: #3b6aa6; }
+.segment-preview { display: block; margin: 6px auto; background: #1a1c21; border: 1px solid var(--line); max-width: 100%; }
+
+.llm-optin { border: 1px solid var(--border, #333); border-radius: 6px; padding: 8px 10px; margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
+.llm-optin input[type="password"] { width: 100%; }
+.llm-payload { max-height: 160px; overflow: auto; font-size: 11px; background: rgba(0,0,0,.25); padding: 6px; border-radius: 4px; white-space: pre-wrap; word-break: break-all; }
+button.link { background: none; border: none; padding: 0; color: var(--accent, #6af); cursor: pointer; text-align: left; }
+
+.empty-state { position: absolute; inset: 0; margin: auto; width: min(420px, calc(100% - 32px)); height: fit-content; text-align: center; padding: 24px; border: 1px dashed var(--border, #444); border-radius: 10px; background: rgba(20, 22, 27, .82); pointer-events: auto; }
+.empty-state h2 { margin: 0 0 8px; font-size: 18px; }
+.empty-state .row-flex { justify-content: center; gap: 8px; margin: 12px 0; }

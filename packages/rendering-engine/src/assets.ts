@@ -4,6 +4,8 @@ import { CanvasSource, Texture } from 'pixi.js';
 export const TEXTURE_PAD = 2;
 
 interface Entry {
+  /** Texture resolution relative to the layer pixels (1 = full, < 1 downscaled for memory). */
+  scale: number;
   texture: Texture;
   /** Unpadded size (= layer bounds). */
   width: number;
@@ -18,6 +20,12 @@ interface Entry {
  */
 export class TextureCache {
   private entries = new Map<string, Entry>();
+  /** Scale applied to textures added from now on (spec §13.2 low-memory devices). */
+  uploadScale = 1;
+
+  scaleOf(id: string): number {
+    return this.entries.get(id)?.scale ?? 1;
+  }
 
   has(id: string) {
     return this.entries.has(id) || id.startsWith('builtin:');
@@ -36,13 +44,18 @@ export class TextureCache {
    */
   add(id: string, bitmap: ImageBitmap, alpha: Uint8Array) {
     this.delete(id);
-    const canvas = new OffscreenCanvas(bitmap.width + TEXTURE_PAD * 2, bitmap.height + TEXTURE_PAD * 2);
-    canvas.getContext('2d')!.drawImage(bitmap, TEXTURE_PAD, TEXTURE_PAD);
+    const sc = Math.min(1, Math.max(0.125, this.uploadScale));
+    const tw = Math.max(1, Math.round(bitmap.width * sc)), th = Math.max(1, Math.round(bitmap.height * sc));
+    const scale = tw / bitmap.width;
+    const canvas = new OffscreenCanvas(tw + TEXTURE_PAD * 2, th + TEXTURE_PAD * 2);
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(bitmap, TEXTURE_PAD, TEXTURE_PAD, tw, th);
     const width = bitmap.width, height = bitmap.height;
     bitmap.close();
     const source = new CanvasSource({ resource: canvas as unknown as HTMLCanvasElement, label: id });
     const texture = new Texture({ source });
-    this.entries.set(id, { texture, width, height, alpha });
+    this.entries.set(id, { texture, width, height, alpha, scale });
   }
 
   /** Alpha map (one byte per pixel, unpadded) for mesh generation and quality checks. */

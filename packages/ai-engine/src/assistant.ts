@@ -43,6 +43,14 @@ export function interpret(request: string, proposal: RigProposal, project: Proje
     explanation.push(it.say);
   }
   if (!steps.size) return { understood: false, steps: [], explanation: [], unmatched: request };
+  return completePlan({ understood: true, steps: [...steps], explanation }, proposal, project);
+}
+
+/** Adds prerequisites and warnings to a plan (used for both the local parser and an LLM provider). */
+export function completePlan(plan: AssistantPlan, proposal: RigProposal, project: Project): AssistantPlan {
+  if (!plan.understood) return plan;
+  const steps = new Set<RigStepId>(plan.steps);
+  const explanation = [...plan.explanation];
   // Prerequisites: meshes and parameters always; nested warps need their parents.
   const avail = new Map(proposal.steps.map((s) => [s.id, s]));
   for (const s of [...steps]) for (const n of avail.get(s)?.needs ?? []) {

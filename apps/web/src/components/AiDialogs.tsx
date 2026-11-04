@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { aiActions, useAi } from '../state/ai.ts';
 import { useEditor } from '../state/editor.ts';
 
@@ -74,14 +75,29 @@ export function AutoRigDialog() {
 export function AssistantDialog() {
   const open = useAi((s) => s.assistantOpen);
   const text = useAi((s) => s.assistantText);
+  const llm = useAi((s) => s.llm);
+  const busy = useAi((s) => s.assistantBusy);
+  const [showPayload, setShowPayload] = useState(false);
   if (!open) return null;
   return (
-    <div className="modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && aiActions.openAssistant(false)}>
-      <form className="modal" role="dialog" aria-label="Rigging Assistant" onSubmit={(e) => { e.preventDefault(); aiActions.openAssistant(false); aiActions.ask(); }}>
+    <div className="modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && !busy && aiActions.openAssistant(false)}>
+      <form className="modal" role="dialog" aria-label="Rigging Assistant" onSubmit={(e) => { e.preventDefault(); void aiActions.ask(); }}>
         <header><h3>Rigging Assistant</h3><button type="button" onClick={() => aiActions.openAssistant(false)} aria-label="Close">✕</button></header>
         <textarea className="assistant-input" autoFocus rows={3} value={text} placeholder="예: 앞머리가 머리 회전에 맞춰 자연스럽게 움직이도록 해줘." onChange={(e) => aiActions.setAssistantText(e.target.value)} aria-label="Request" />
-        <p className="muted small">Requests are interpreted locally in the browser; nothing is uploaded. You will see the plan before anything changes.</p>
-        <footer className="dialog-actions"><button type="submit" className="primary" data-testid="assistant-ask">Make a plan</button></footer>
+        <fieldset className="llm-optin">
+          <label><input type="checkbox" data-testid="llm-enable" checked={llm.enabled} onChange={(e) => aiActions.setLlm({ enabled: e.target.checked })} /> Use Claude (cloud, opt-in)</label>
+          {llm.enabled && (
+            <>
+              <p className="muted small">Only text is sent to the Anthropic API with <b>your own</b> API key: this request, layer names / part tags and parameter ids. Images, textures and the project file never leave this browser. Falls back to the offline parser on any error.</p>
+              <input type="password" autoComplete="off" placeholder="Anthropic API key (sk-ant-…)" aria-label="API key" data-testid="llm-key" value={llm.apiKey} onChange={(e) => aiActions.setLlm({ apiKey: e.target.value.trim() })} />
+              <label className="small"><input type="checkbox" checked={llm.remember} onChange={(e) => aiActions.setLlm({ remember: e.target.checked })} /> Remember key on this device (stored in this browser only)</label>
+              <button type="button" className="link small" onClick={() => setShowPayload((v) => !v)}>{showPayload ? 'Hide' : 'Show'} exactly what will be sent</button>
+              {showPayload && <pre className="llm-payload" data-testid="llm-payload">{aiActions.llmPayload()}</pre>}
+            </>
+          )}
+        </fieldset>
+        {!llm.enabled && <p className="muted small">Requests are interpreted locally in the browser; nothing is uploaded. You will see the plan before anything changes.</p>}
+        <footer className="dialog-actions"><button type="submit" className="primary" data-testid="assistant-ask" disabled={busy || (llm.enabled && !llm.apiKey)}>{busy ? 'Asking Claude…' : 'Make a plan'}</button></footer>
       </form>
     </div>
   );

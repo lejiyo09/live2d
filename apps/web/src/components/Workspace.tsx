@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StudioRenderer } from '@l2s/rendering-engine';
 import { editor, useEditor } from '../state/editor.ts';
+import { actions } from '../state/actions.ts';
 import { meshActions, useMesh } from '../state/mesh.ts';
 import { createMeshEditTool } from '../tools/meshEditTool.ts';
 import { createDeformTool, deformPoints } from '../tools/deformTool.ts';
@@ -17,6 +18,7 @@ export function Workspace({ onReady }: { onReady: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const importing = useEditor((s) => s.importing);
+  const empty = useEditor((s) => s.project.rootIds.length === 0);
   const split = useSplit((s) => s.on);
 
   useEffect(() => {
@@ -138,6 +140,17 @@ export function Workspace({ onReady }: { onReady: () => void }) {
     >
       <div className={split ? 'canvas-host half' : 'canvas-host'} ref={host} />
       {split && <SplitView />}
+      {empty && !importing && (
+        <div className="empty-state" data-testid="empty-state">
+          <h2>Start a model</h2>
+          <p>Drop a layered <b>.psd</b> or <b>.l2studio</b> file here, or</p>
+          <div className="row-flex">
+            <button className="btn primary" onClick={() => actions.openFileDialog()}>Open PSD…</button>
+            <button className="btn" onClick={() => void editor.openSample()} data-testid="open-sample">Try the sample character</button>
+          </div>
+          <p className="muted small">Files stay in this browser (IndexedDB). Nothing is uploaded.<br />Unofficial tool — not affiliated with or endorsed by Live2D Inc.</p>
+        </div>
+      )}
       <ToolStrip />
       <PreviewBanner />
       <ZoomControls />

@@ -102,8 +102,15 @@ licence review of any model). Every result is a proposal the user reviews; apply
   (Head Z → Face XY → Eye L/R, Mouth, Hair Front; Hair Back). Keyforms are written as canvas-space
   displacements converted into each deformer's parent space, so the default pose is unchanged.
 * `analyzeRig` — static checks plus evaluation at every bound parameter's min/max (folds, stretch).
-* `interpret` — keyword intent parser for the assistant; `LanguageModelProvider` is the opt-in,
-  consent-gated slot for server-side LLM planning.
+* `interpret` — keyword intent parser for the assistant. `completePlan` adds prerequisites and
+  warnings to any plan (local or LLM).
+* `createClaudeProvider` — the opt-in `LanguageModelProvider` (official `@anthropic-ai/sdk`,
+  bring-your-own key in the browser). It sends only text (`buildAssistantPayload`: request, layer
+  names / tags, parameter ids), asks for JSON constrained by a schema whose step ids are the fixed
+  auto-rig steps, and `parsePlan` re-validates the reply against that whitelist. Errors fall back to
+  the local parser. The key stays in memory unless the user ticks "remember".
+* `segmentLayer` — classical part splitting (alpha islands or k-means colour regions + connected
+  components, small fragments merged) used by AI Tools → Split Layer into Parts.
 
 ## Physics and animation (Phase 5)
 

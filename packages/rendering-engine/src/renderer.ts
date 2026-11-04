@@ -270,7 +270,9 @@ export class StudioRenderer {
         this.displays.set(n.id, d);
       }
       if (d.obj.texture !== tex) d.obj.texture = tex;
-      const pad = tex === Texture.EMPTY ? 0 : TEXTURE_PAD;
+      const sc = this.textures.scaleOf(n.assets.display);
+      const pad = tex === Texture.EMPTY ? 0 : TEXTURE_PAD / sc;
+      d.obj.scale.set(1 / sc);
       d.obj.position.set(n.bounds.x - pad, n.bounds.y - pad);
       return d;
     }
@@ -282,7 +284,7 @@ export class StudioRenderer {
       }
       return d;
     }
-    const geometry = buildGeometry(mesh, n.bounds, tex, positions);
+    const geometry = buildGeometry(mesh, n.bounds, tex, positions, this.textures.scaleOf(n.assets.display));
     if (d?.kind === 'mesh') {
       const old = d.obj.geometry;
       d.obj.geometry = geometry;
@@ -355,7 +357,7 @@ export class StudioRenderer {
         if (mesh) {
           if (part?.kind !== 'mesh' || part.mesh !== mesh || part.texture !== tex) {
             part?.obj.destroy();
-            part = { kind: 'mesh', obj: new Mesh({ geometry: buildGeometry(mesh, n.bounds, tex, positions), texture: tex }), mesh, texture: tex, positions };
+            part = { kind: 'mesh', obj: new Mesh({ geometry: buildGeometry(mesh, n.bounds, tex, positions, this.textures.scaleOf(n.assets.display)), texture: tex }), mesh, texture: tex, positions };
             m.parts.set(id, part);
             m.scene.addChild(part.obj);
           } else if (part.positions !== positions) {
@@ -370,7 +372,9 @@ export class StudioRenderer {
             m.scene.addChild(part.obj);
           }
           if (part.obj.texture !== tex) part.obj.texture = tex;
-          const pad = tex === Texture.EMPTY ? 0 : TEXTURE_PAD;
+          const sc = this.textures.scaleOf(n.assets.display);
+          const pad = tex === Texture.EMPTY ? 0 : TEXTURE_PAD / sc;
+          part.obj.scale.set(1 / sc);
           part.obj.position.set(n.bounds.x - pad, n.bounds.y - pad);
         }
       }
@@ -804,13 +808,15 @@ export function rotationHandle(r: { x: number; y: number; angle: number; handleL
 }
 
 /** Mesh UVs are stored relative to the unpadded layer image; map them into the padded texture. */
-function buildGeometry(mesh: ArtMesh, bounds: Rect, tex: Texture, positions: Float32Array | null): MeshGeometry {
+function buildGeometry(mesh: ArtMesh, bounds: Rect, tex: Texture, positions: Float32Array | null, scale = 1): MeshGeometry {
   const pad = tex === Texture.EMPTY ? 0 : TEXTURE_PAD;
-  const tw = bounds.width + pad * 2, th = bounds.height + pad * 2;
+  // Texture pixels: layer pixels × scale, plus the transparent border.
+  const w = Math.max(1, Math.round(bounds.width * scale)), h = Math.max(1, Math.round(bounds.height * scale));
+  const tw = w + pad * 2, th = h + pad * 2;
   const uvs = new Float32Array(mesh.uvs.length);
   for (let i = 0; i < uvs.length; i += 2) {
-    uvs[i] = (mesh.uvs[i]! * bounds.width + pad) / tw;
-    uvs[i + 1] = (mesh.uvs[i + 1]! * bounds.height + pad) / th;
+    uvs[i] = (mesh.uvs[i]! * w + pad) / tw;
+    uvs[i + 1] = (mesh.uvs[i + 1]! * h + pad) / th;
   }
   return new MeshGeometry({
     positions: positions ?? Float32Array.from(mesh.vertices),

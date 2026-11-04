@@ -10,11 +10,12 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@l2s/editor-core": "workspace:*",
-    "@l2s/parameter-engine": "workspace:*",
+    "@anthropic-ai/sdk": "1.4.0",
     "@l2s/deformer-engine": "workspace:*",
+    "@l2s/editor-core": "workspace:*",
     "@l2s/mesh-engine": "workspace:*",
-    "@l2s/psd-importer": "workspace:*",
-    "@l2s/physics-engine": "workspace:*"
+    "@l2s/parameter-engine": "workspace:*",
+    "@l2s/physics-engine": "workspace:*",
+    "@l2s/psd-importer": "workspace:*"
   }
 }
