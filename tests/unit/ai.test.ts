@@ -123,3 +123,24 @@ describe('assistant', () => {
     expect(interpret('asdf qwer', proposal, project).understood).toBe(false);
   });
 });
+
+describe('part segmentation (classical)', () => {
+  it('splits alpha islands and colour regions', async () => {
+    const { segmentLayer, regionPixels } = await import('@l2s/ai-engine');
+    const w = 100, h = 60, px = new Uint8ClampedArray(w * h * 4);
+    const fill = (x0: number, y0: number, x1: number, y1: number, c: [number, number, number]) => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) px.set([...c, 255], (y * w + x) * 4); };
+    fill(5, 5, 35, 55, [230, 40, 40]);   // red island
+    fill(60, 5, 95, 30, [40, 40, 230]);  // blue (touching green below → one island)
+    fill(60, 30, 95, 55, [40, 200, 60]); // green
+    px.set([0, 0, 0, 255], (2 * w + 2) * 4); // single stray pixel → dropped
+    const islands = segmentLayer(px, w, h, { mode: 'islands' });
+    expect(islands).toHaveLength(2);
+    const colors = segmentLayer(px, w, h, { mode: 'colors', clusters: 3 });
+    expect(colors).toHaveLength(3);
+    expect(colors.map((r) => r.pixels).sort((a, b) => a - b)).toEqual([35 * 25, 35 * 25, 30 * 50]);
+    const red = colors.find((r) => r.color[0] > 200)!;
+    expect([red.x, red.y, red.width, red.height]).toEqual([5, 5, 30, 50]);
+    const cut = regionPixels(px, w, red);
+    expect(cut[3]).toBe(255);
+  });
+});

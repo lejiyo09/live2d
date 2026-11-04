@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { editor, useEditor } from '../state/editor.ts';
+import { APP_NAME, editor, useEditor } from '../state/editor.ts';
 import { actions } from '../state/actions.ts';
 import { SHORTCUTS, formatKeys } from '../state/shortcuts.ts';
 import { meshActions, useMesh } from '../state/mesh.ts';
@@ -9,6 +9,7 @@ import { exportCubismJson, importCubismJson, moc3Actions } from '../state/moc3.t
 import { openFilePicker } from '../state/filePicker.ts';
 import { usePrefs } from './Preferences.tsx';
 import { useSplit } from './SplitView.tsx';
+import { useSegment } from './SegmentDialog.tsx';
 import { animActions, useAnim } from '../state/anim.ts';
 import { bakePhysics } from '@l2s/animation-engine';
 
@@ -40,6 +41,7 @@ function useMenus(): Array<{ name: string; items: Entry[] }> {
     { name: 'File', items: [
       { label: 'New Project', run: () => void editor.newProject() },
       { label: 'Open PSD / Project…', run: () => actions.openFileDialog(), shortcut: 'open' },
+      { label: 'Open Sample Character', run: () => void editor.openSample() },
       { label: 'Recent Projects…', run: () => editor.openProjectDialog(true), shortcut: 'projects' },
       { label: 'Import Cubism JSON (motion3 / physics3 / exp3)…', run: () => pickFiles('.json', (f) => void importCubismJson(f)), disabled: !hasDoc },
       { label: 'Preview MOC3 Model…', run: () => moc3Actions.setOpen(true) },
@@ -137,7 +139,7 @@ function useMenus(): Array<{ name: string; items: Entry[] }> {
       { label: 'Rigging Assistant…', run: () => aiActions.openAssistant(true), disabled: !hasDoc },
       { label: 'Rig Quality Analyzer', run: aiActions.analyze, disabled: !hasDoc },
       'sep',
-      { label: 'Part Segmentation (merged image)', phase: 'needs model' },
+      { label: 'Split Layer into Parts… (classical segmentation)', run: () => useSegment.setState({ open: true }), disabled: !hasDoc },
       { label: 'Image Classifier (ONNX)', phase: 'needs model' },
     ] },
     { name: 'Export', items: [
@@ -166,7 +168,7 @@ export function MenuBar() {
 
   return (
     <nav className="menubar" ref={ref} role="menubar">
-      <span className="brand">Live2D Studio</span>
+      <span className="brand" title="Unofficial tool — not affiliated with or endorsed by Live2D Inc.">{APP_NAME}</span>
       {menus.map((m) => (
         <div key={m.name} className="menu">
           <button

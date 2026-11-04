@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { Command, LayerNode, PartTag } from '@l2s/editor-core';
 import { AUTO_MESH_PRESETS, generateAutoMesh } from '@l2s/mesh-engine';
 import {
-  analyzeRig, applyRigProposal, buildRigProposal, interpret, recognizeParts,
+  analyzeRig, applyRigProposal, buildRigProposal, buildAssistantPayload, completePlan, createClaudeProvider, interpret, recognizeParts,
   type AssistantPlan, type Finding, type PartSuggestion, type RigProposal, type RigStepId,
 } from '@l2s/ai-engine';
 import { editor, log, useEditor } from './editor.ts';
@@ -18,13 +18,40 @@ export interface AiState {
   demo: boolean;
   findings: Finding[] | null;
   analyzedAt: string | null;
+  /** Opt-in cloud assistant (§10.7): off by default, user-supplied key, text only. */
+  llm: { enabled: boolean; apiKey: string; remember: boolean };
+  assistantBusy: boolean;
+}
+
+const LLM_KEY = 'l2s:llm';
+function loadLlm(): AiState['llm'] {
+  try {
+    const v = JSON.parse(localStorage.getItem(LLM_KEY) ?? 'null') as { apiKey?: string } | null;
+    if (v?.apiKey) return { enabled: true, apiKey: v.apiKey, remember: true };
+  } catch { /* storage unavailable */ }
+  return { enabled: false, apiKey: '', remember: false };
 }
 
 export const useAi = create<AiState>(() => ({
   recognize: null, rig: null, assistantOpen: false, assistantText: '', preview: null, demo: false, findings: null, analyzedAt: null,
+  llm: loadLlm(), assistantBusy: false,
 }));
+useAi.subscribe((st, prev) => {
+  if (st.llm === prev.llm) return;
+  try {
+    if (st.llm.remember && st.llm.enabled && st.llm.apiKey) localStorage.setItem(LLM_KEY, JSON.stringify({ apiKey: st.llm.apiKey }));
+    else localStorage.removeItem(LLM_KEY);
+  } catch { /* storage unavailable */ }
+});
 const set = useAi.setState;
 const get = useAi.getState;
+
+/** Text-only context for the cloud assistant: part names/tags and parameter ids. */
+function assistantContext() {
+  const p = editor.project;
+  const parts = Object.values(p.nodes).flatMap((n) => (n.kind !== 'layer' ? [] : [n.partTag ? `${n.name} [${n.partTag.category}]` : n.name]));
+  return { parts, parameters: p.parameters.map((x) => x.id) };
+}
 
 function alphaOf(l: LayerNode) {
   return editor.renderer?.textures.getAlpha(l.assets.display)?.alpha;
@@ -113,11 +140,28 @@ export const aiActions = {
   // -------------------------------------------------------------- assistant (§10.5)
   openAssistant(v: boolean) { set({ assistantOpen: v }); },
   setAssistantText(t: string) { set({ assistantText: t }); },
-  ask() {
+  setLlm(p: Partial<AiState['llm']>) { set({ llm: { ...get().llm, ...p } }); },
+  /** Exactly the text that would be sent to the cloud provider. */
+  llmPayload(): string {
+    return buildAssistantPayload(get().assistantText.trim(), assistantContext());
+  },
+  async ask() {
     const text = get().assistantText.trim();
-    if (!text) return;
+    if (!text || get().assistantBusy) return;
     const proposal = buildRigProposal(editor.project, meshesFor);
-    const plan = interpret(text, proposal, editor.project);
+    let plan: AssistantPlan | null = null;
+    const { llm } = get();
+    if (llm.enabled && llm.apiKey) {
+      set({ assistantBusy: true });
+      try {
+        const raw = await createClaudeProvider({ apiKey: llm.apiKey }).plan(text, assistantContext());
+        plan = completePlan(raw, proposal, editor.project);
+        log('info', `Assistant (Claude): ${plan.understood ? `${plan.steps.length} step(s) proposed` : 'request not understood'}.`);
+      } catch (e) {
+        log('warn', `Assistant (Claude) failed — ${(e as Error).message} Using the offline parser instead.`);
+      } finally { set({ assistantBusy: false }); }
+    }
+    plan ??= interpret(text, proposal, editor.project);
     if (!plan.understood) { set({ rig: null }); log('warn', `Assistant: could not map "${text}" to a rigging task.`); }
     const steps = proposal.steps.map((s) => ({
       ...s,

@@ -12,10 +12,11 @@ import { AssistantDialog, AutoRigDialog, RecognizeDialog } from './components/Ai
 import { ExportDialog } from './components/ExportDialog.tsx';
 import { Moc3Preview } from './components/Moc3Preview.tsx';
 import { PreferencesDialog, applyPrefs } from './components/Preferences.tsx';
+import { SegmentDialog } from './components/SegmentDialog.tsx';
 
 applyPrefs();
 import { Splitter } from './components/Splitter.tsx';
-import { editor } from './state/editor.ts';
+import { editor, useEditor } from './state/editor.ts';
 import { installShortcuts } from './state/shortcuts.ts';
 
 interface Layout { left: number; right: number; bottom: number }
@@ -38,7 +39,12 @@ export function App() {
 
   const onReady = useCallback(() => {
     const params = new URLSearchParams(location.search);
-    if (!params.has('fresh')) void editor.restoreLastSession();
+    const demo = import.meta.env.VITE_DEMO === '1';
+    if (params.has('sample') || location.hash === '#sample') void editor.openSample();
+    else if (!params.has('fresh')) void editor.restoreLastSession().then(() => {
+      // Hosted demo: start with the sample character instead of an empty canvas.
+      if (demo && !useEditor.getState().project.rootIds.length) void editor.openSample();
+    });
     // PWA file handling (launch with a .psd / .l2studio file).
     const lq = (window as unknown as { launchQueue?: { setConsumer(cb: (p: { files: FileSystemFileHandle[] }) => void): void } }).launchQueue;
     lq?.setConsumer(async ({ files }) => {
@@ -72,6 +78,7 @@ export function App() {
       <ExportDialog />
       <Moc3Preview />
       <PreferencesDialog />
+      <SegmentDialog />
     </div>
   );
 }
