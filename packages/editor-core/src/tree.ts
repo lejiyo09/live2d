@@ -146,5 +146,6 @@ export function referencedAssetIds(project: Project): Set<string> {
     ids.add(n.assets.display);
     if (n.assets.mask) ids.add(n.assets.mask);
   }
+  for (const id of [...ids]) if (id.startsWith('builtin:')) ids.delete(id);
   return ids;
 }

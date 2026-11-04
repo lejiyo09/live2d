@@ -60,10 +60,10 @@ export async function writePackage(project: Project, assets: StoredAsset[], opts
   }
   files['manifest.json'] = strToU8(JSON.stringify(manifest, null, 2));
   // Meshes are stored in their own section (spec §12.1); project.json keeps the scene graph.
-  const { meshes, deformers, parameters, parameterGroups, physics, animations, expressions, ...sceneGraph } = project;
+  const { meshes, deformers, parameters, parameterGroups, physics, animations, scenes, expressions, ...sceneGraph } = project;
   files['parameters/expressions.json'] = strToU8(JSON.stringify({ version: 1, expressions: expressions ?? [] }));
   files['physics/physics.json'] = strToU8(JSON.stringify({ version: 1, ...physics }));
-  files['animations/animations.json'] = strToU8(JSON.stringify({ version: 1, clips: animations ?? [] }));
+  files['animations/animations.json'] = strToU8(JSON.stringify({ version: 1, clips: animations ?? [], scenes: scenes ?? [] }));
   files['project.json'] = strToU8(JSON.stringify(sceneGraph));
   files['meshes/meshes.json'] = strToU8(JSON.stringify({ version: 1, meshes: Object.values(meshes ?? {}) }));
   files['deformers/deformers.json'] = strToU8(JSON.stringify({ version: 1, deformers: Object.values(deformers ?? {}) }));
@@ -107,7 +107,11 @@ export async function readPackage(bytes: Uint8Array): Promise<{ project: Project
   const exFile = files['parameters/expressions.json'];
   if (exFile) doc.expressions = (JSON.parse(strFromU8(exFile)) as { expressions?: unknown[] }).expressions ?? [];
   const animFile = files['animations/animations.json'];
-  if (animFile) doc.animations = (JSON.parse(strFromU8(animFile)) as { clips?: unknown[] }).clips ?? [];
+  if (animFile) {
+    const a = JSON.parse(strFromU8(animFile)) as { clips?: unknown[]; scenes?: unknown[] };
+    doc.animations = a.clips ?? [];
+    doc.scenes = a.scenes ?? [];
+  }
   const project = migrateProject(doc);
   const assets: StoredAsset[] = [];
   for (const a of manifest.assets) {

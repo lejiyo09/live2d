@@ -11,6 +11,8 @@ const MIGRATIONS: Record<number, Migration> = {
   // v3 → v4: physics and animation (Phase 5).
   // v4 → v5: expressions (parameter presets).
   4: (p) => ({ ...p, expressions: p.expressions ?? [] }),
+  // v5 → v6: scenes (multi-clip timeline).
+  5: (p) => ({ ...p, scenes: p.scenes ?? [] }),
   3: (p) => ({ ...p, physics: p.physics ?? { fps: 30, gravity: { x: 0, y: -1 }, wind: { x: 0, y: 0 }, settings: [] }, animations: p.animations ?? [] }),
 };
 

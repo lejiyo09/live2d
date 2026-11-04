@@ -1,7 +1,8 @@
 import { Application, Container, Graphics, Mesh, MeshGeometry, Rectangle, RenderTexture, Sprite, Texture } from 'pixi.js';
 import 'pixi.js/advanced-blend-modes';
 import { boundsOf, resolveDrawOrder, type ArtMesh, type LayerNode, type NodeId, type Project, type Rect } from '@l2s/editor-core';
-import { TEXTURE_PAD, TextureCache } from './assets.ts';
+import { TEXTURE_PAD, TextureCache, brushTexture } from './assets.ts';
+import { buildRibbon } from '@l2s/mesh-engine';
 import { toPixiBlend } from './blend.ts';
 import { fit, screenToWorld, zoomAt, type CameraState } from './camera.ts';
 import { pick, type MeshSampler } from './hittest.ts';
@@ -261,6 +262,7 @@ export class StudioRenderer {
   private updateDisplay(n: LayerNode, mesh: ArtMesh | undefined, positions: Float32Array | null): Display {
     const tex = this.textures.get(n.assets.display) ?? Texture.EMPTY;
     let d = this.displays.get(n.id);
+    if (mesh?.path) return this.updatePath(n, mesh, positions, d);
     if (!mesh) {
       if (d?.kind !== 'sprite') {
         if (d) this.destroyDisplay(d);
@@ -374,6 +376,28 @@ export class StudioRenderer {
       }
       this.app.renderer.render({ container: m.scene, target: m.rt, clear: true });
     }
+  }
+
+  /** ArtPath: rebuild the stroke ribbon from the (posed) control points. */
+  private updatePath(n: LayerNode, mesh: ArtMesh, positions: Float32Array | null, d: Display | undefined): Display {
+    const style = mesh.path!;
+    const r = buildRibbon(positions ?? mesh.vertices, style);
+    if (d?.kind === 'mesh' && d.mesh === mesh && d.positions === positions && d.obj.geometry.indices.length === r.indices.length) return d;
+    const geometry = new MeshGeometry({ positions: r.positions, uvs: r.uvs, indices: r.indices });
+    const tex = brushTexture();
+    if (d?.kind === 'mesh') {
+      const old = d.obj.geometry;
+      d.obj.geometry = geometry;
+      old.destroy();
+    } else {
+      if (d) this.destroyDisplay(d);
+      d = { kind: 'mesh', obj: new Mesh({ geometry, texture: tex, label: n.id }), mesh, texture: tex, positions };
+      this.displays.set(n.id, d);
+    }
+    d.obj.tint = style.color;
+    d.mesh = mesh;
+    d.positions = positions;
+    return d;
   }
 
   private destroyDisplay(d: Display) {
@@ -533,6 +557,11 @@ export class StudioRenderer {
       if (e.ghost && e.kind === 'warp') this.drawGrid(g, e.ghost, e.cols!, e.rows!, sx, sy, 0.18, false);
       if (e.underlay) this.drawGrid(g, e.underlay.points, e.underlay.cols, e.underlay.rows, sx, sy, 0.55, true);
       if (e.kind === 'mesh') this.drawWire(g, e.points, e.triangles ?? [], e.boundary ?? [], sx, sy, alpha);
+      if (e.kind === 'mesh' && !e.triangles?.length && e.points.length >= 4) {
+        // ArtPath: control polygon
+        for (let i = 0; i < e.points.length; i += 2) { const x = sx(e.points[i]!), y = sy(e.points[i + 1]!); if (i === 0) g.moveTo(x, y); else g.lineTo(x, y); }
+        g.stroke({ width: 1, color: 0xff6ac1, alpha, });
+      }
       if (e.kind === 'warp') this.drawGrid(g, e.points, e.cols!, e.rows!, sx, sy, alpha, false);
       if (e.kind === 'rotation') {
         const ox = sx(e.points[0]!), oy = sy(e.points[1]!), hx = sx(e.points[2]!), hy = sy(e.points[3]!);
@@ -622,6 +651,20 @@ export class StudioRenderer {
     const m = p?.meshes[layerId];
     const n = p?.nodes[layerId];
     if (!m || n?.kind !== 'layer') return null;
+    if (m.path) {
+      const r = buildRibbon(this.pose?.meshes.get(layerId)?.positions ?? m.vertices, m.path, 4);
+      const c = r.positions;
+      // Inside any ribbon quad (two triangles) counts as opaque.
+      for (let i = 0; i < r.indices.length; i += 3) {
+        const a = r.indices[i]!, b = r.indices[i + 1]!, q = r.indices[i + 2]!;
+        const ax = c[a * 2]!, ay = c[a * 2 + 1]!, bx = c[b * 2]!, by = c[b * 2 + 1]!, cx = c[q * 2]!, cy = c[q * 2 + 1]!;
+        const den = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+        if (Math.abs(den) < 1e-9) continue;
+        const l1 = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / den, l2 = ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / den;
+        if (l1 >= 0 && l2 >= 0 && l1 + l2 <= 1) return 255;
+      }
+      return 0;
+    }
     const v = this.pose?.meshes.get(layerId)?.positions ?? m.vertices;
     const t = m.triangles;
     for (let i = 0; i < t.length; i += 3) {

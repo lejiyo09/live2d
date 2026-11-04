@@ -4,6 +4,7 @@ import { editor, useEditor } from '../state/editor.ts';
 import { meshActions, useMesh } from '../state/mesh.ts';
 import { createMeshEditTool } from '../tools/meshEditTool.ts';
 import { createDeformTool, deformPoints } from '../tools/deformTool.ts';
+import { createPenTool, pen } from '../tools/penTool.ts';
 import { activeObjectId, keyStateOf, rigActions, useRig } from '../state/rig.ts';
 import { evaluateModel } from '@l2s/deformer-engine';
 import { PreviewBanner } from './AiDialogs.tsx';
@@ -28,6 +29,8 @@ export function Workspace({ onReady }: { onReady: () => void }) {
       const onOverlay = (o: typeof overlay) => { overlay = o; push(); };
       const meshTool = createMeshEditTool(onOverlay);
       const deformTool = createDeformTool(onOverlay);
+      const penTool = createPenTool();
+      pen.onChange = () => push();
       let restCache: { project: unknown; model: ReturnType<typeof evaluateModel> } | null = null;
       const restModel = () => {
         const p = editor.project;
@@ -45,6 +48,11 @@ export function Workspace({ onReady }: { onReady: () => void }) {
             kind: 'mesh', targetId: m.editLayerId, points: mesh.vertices, triangles: mesh.triangles, boundary: mesh.boundary,
             selected: new Set(m.selectedVertices), hover: overlay.hover, box: overlay.box, flagged, editable: true,
           });
+          return;
+        }
+        if (m.mode === 'pen') {
+          const pts = [...pen.points, ...(pen.hover && pen.points.length ? pen.hover : [])];
+          rr.setEditOverlay(pts.length ? { kind: 'mesh', targetId: '__pen', points: pts, selected: new Set(), hover: -1, box: null, flagged: new Set(), editable: true } : null);
           return;
         }
         if (m.mode === 'deform') {
@@ -79,7 +87,7 @@ export function Workspace({ onReady }: { onReady: () => void }) {
       const u1 = useMesh.subscribe((m) => {
         if (m.mode !== lastMode) {
           lastMode = m.mode;
-          rr.setTool(m.mode === 'mesh' ? meshTool : m.mode === 'deform' ? deformTool : null);
+          rr.setTool(m.mode === 'mesh' ? meshTool : m.mode === 'deform' ? deformTool : m.mode === 'pen' ? penTool : null);
           useRig.setState({ deformSelected: [] });
         }
         push();
@@ -166,6 +174,7 @@ function ToolStrip() {
         <button className={mode === 'select' ? 'active' : ''} title="Select (V)" aria-label="Select tool" onClick={() => meshActions.exitMeshEdit()}>⬚</button>
         <button className={mode === 'mesh' ? 'active' : ''} title="Edit Mesh (M)" aria-label="Mesh edit tool" onClick={() => meshActions.toggleMeshEdit()}>◭</button>
         <button className={mode === 'deform' ? 'active' : ''} title="Deform / edit keyform (D)" aria-label="Deform tool" onClick={() => meshActions.toggleDeform()}>⤧</button>
+        <button className={mode === 'pen' ? 'active' : ''} title="ArtPath pen (P): click points, double-click / Enter to finish" aria-label="ArtPath pen" onClick={() => meshActions.togglePen()} data-testid="pen-tool">✎</button>
         <button title="Auto Generate ArtMesh… (Ctrl+Shift+M)" aria-label="Auto mesh" onClick={() => meshActions.openAutoMesh(true)}>✱</button>
       </div>
       {mode === 'mesh' && mesh && (
@@ -184,6 +193,7 @@ function ToolStrip() {
         </div>
       )}
       {mode === 'deform' && <DeformBanner />}
+      {mode === 'pen' && <div className="mode-banner" data-testid="pen-banner"><strong>ArtPath Pen</strong> <span className="muted">— click to add points · double-click or Enter: finish · Esc: cancel</span></div>}
       {running && (
         <div className="overlay-msg progress" role="status">
           <div>Generating meshes…</div>

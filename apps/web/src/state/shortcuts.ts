@@ -5,6 +5,7 @@ import { moveVertices } from '@l2s/mesh-engine';
 import { activeObjectId, rigActions, useRig } from './rig.ts';
 import { commitDeform, deformPoints, moveBezierHandles } from '../tools/deformTool.ts';
 import { activeClip, animActions, useAnim } from './anim.ts';
+import { cancelPen, finishPen } from '../tools/penTool.ts';
 
 function stepFrame(d: number) {
   const c = activeClip();
@@ -53,7 +54,7 @@ export const SHORTCUTS: Record<string, Shortcut> = {
   redo: { keys: 'Mod+Shift+Z', run: () => editor.redo() },
   redoAlt: { keys: 'Mod+Y', run: () => editor.redo() },
   selectAll: { keys: 'Mod+A', run: () => (inMesh() ? meshActions.selectAllVertices() : inDeform() ? selectAllPoints() : editor.selectAll()) },
-  deselect: { keys: 'Escape', run: () => (inMesh() ? meshActions.exitMeshEdit() : inDeform() ? meshActions.toggleDeform() : editor.select(null)) },
+  deselect: { keys: 'Escape', run: () => (useMesh.getState().mode === 'pen' ? cancelPen() : inMesh() ? meshActions.exitMeshEdit() : inDeform() ? meshActions.toggleDeform() : editor.select(null)) },
   deform: { keys: 'D', run: () => meshActions.toggleDeform() },
   copyKeyform: { keys: 'Mod+Shift+C', run: () => rigActions.copyKeyform() },
   pasteKeyform: { keys: 'Mod+Shift+V', run: () => rigActions.pasteKeyform() },
@@ -65,6 +66,8 @@ export const SHORTCUTS: Record<string, Shortcut> = {
   meshDeleteTris: { keys: 'Shift+Delete', run: () => inMesh() && meshActions.deleteTriangles() },
   meshUv: { keys: 'U', run: () => inMesh() && meshActions.toggleUvMode() },
   bezier: { keys: 'B', run: () => inDeform() && rigActions.toggleBezier() },
+  pen: { keys: 'P', run: () => meshActions.togglePen() },
+  penFinish: { keys: 'Enter', run: () => { if (useMesh.getState().mode === 'pen') finishPen(); } },
   prevFrame: { keys: ',', run: () => stepFrame(-1) },
   nextFrame: { keys: '.', run: () => stepFrame(1) },
   meshEdit: { keys: 'M', run: () => meshActions.toggleMeshEdit() },

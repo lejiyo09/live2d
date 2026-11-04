@@ -6,7 +6,7 @@
  * and Cubism Editor.
  */
 
-export const PROJECT_FORMAT_VERSION = 5;
+export const PROJECT_FORMAT_VERSION = 6;
 
 export type NodeId = string;
 export type AssetId = string;
@@ -124,6 +124,19 @@ export interface ProjectSource {
   importedAt: string;
 }
 
+export interface ArtPathStyle {
+  /** Stroke width in canvas px. */
+  width: number;
+  /** 0xRRGGBB */
+  color: number;
+  closed: boolean;
+  /** Thin the stroke towards both ends. */
+  taper: boolean;
+}
+
+/** Built-in procedural textures (not stored as assets). */
+export const BUILTIN_BRUSH_ASSET = 'builtin:brush';
+
 /** Settings used by the automatic mesh generator (names follow Cubism Editor's auto-mesh dialog). */
 export interface AutoMeshSettings {
   /** Alpha (0..255) at or above which a pixel counts as part of the drawing ("boundary opacity"). */
@@ -154,6 +167,12 @@ export interface ArtMesh {
   triangles: number[];
   /** Constrained outline loops (vertex indices). The first is not necessarily the outer one. */
   boundary: number[][];
+  /**
+   * ArtPath (vector stroke): when set, `vertices` are the path's control
+   * points (no triangles); the renderer builds a stroke ribbon from the
+   * evaluated control points every frame, so keyforms and deformers apply.
+   */
+  path?: ArtPathStyle;
   /** User edges (spec §5.2 edge editing): kept as constraints whenever the mesh is re-triangulated. */
   edges?: Array<[number, number]>;
   /** Triangles the user deleted (sorted vertex triples); excluded from re-triangulation. */
@@ -190,6 +209,16 @@ export interface Parameter {
 export interface ParameterGroup {
   id: string;
   name: string;
+}
+
+/** A scene arranges clips on tracks over time (spec §9.1 장면 관리). Later tracks override earlier ones. */
+export interface Scene {
+  id: string;
+  name: string;
+  duration: number;
+  fps: number;
+  loop: boolean;
+  entries: Array<{ id: string; clipId: string; start: number; track: number }>;
 }
 
 /** Expression / parameter preset (spec §7.3, Cubism exp3.json semantics). */
@@ -396,6 +425,7 @@ export interface Project {
   deformers: Record<DeformerId, Deformer>;
   physics: PhysicsRig;
   animations: AnimationClip[];
+  scenes: Scene[];
   expressions: Expression[];
   source?: ProjectSource;
 }
@@ -428,6 +458,7 @@ export function createEmptyProject(name: string, width = 2048, height = 2048): P
     deformers: {},
     physics: defaultPhysicsRig(),
     animations: [],
+    scenes: [],
     expressions: [],
   };
 }

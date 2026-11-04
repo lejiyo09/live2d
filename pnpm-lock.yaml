@@ -249,6 +249,9 @@ importers:
       '@l2s/editor-core':
         specifier: workspace:*
         version: link:../editor-core
+      '@l2s/mesh-engine':
+        specifier: workspace:*
+        version: link:../mesh-engine
       pixi.js:
         specifier: 8.22.0
         version: 8.22.0

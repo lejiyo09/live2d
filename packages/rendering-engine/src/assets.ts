@@ -20,10 +20,11 @@ export class TextureCache {
   private entries = new Map<string, Entry>();
 
   has(id: string) {
-    return this.entries.has(id);
+    return this.entries.has(id) || id.startsWith('builtin:');
   }
 
   get(id: string): Texture | undefined {
+    if (id === 'builtin:brush') return brushTexture();
     return this.entries.get(id)?.texture;
   }
 
@@ -56,6 +57,7 @@ export class TextureCache {
   }
 
   sampleAlpha = (id: string, x: number, y: number): number | undefined => {
+    if (id === 'builtin:brush') return BRUSH_ALPHA[Math.min(BRUSH_H - 1, Math.max(0, y))] ?? 0;
     const e = this.entries.get(id);
     if (!e) return undefined;
     if (x < 0 || y < 0 || x >= e.width || y >= e.height) return 0;
@@ -97,4 +99,22 @@ export function alphaFromRgba(rgba: Uint8ClampedArray | Uint8Array, width: numbe
   const a = new Uint8Array(width * height);
   for (let i = 0, j = 3; i < a.length; i++, j += 4) a[i] = rgba[j]!;
   return a;
+}
+
+/** Built-in white brush for ArtPaths: soft edges across v (rows), uniform along u. */
+const BRUSH_W = 4, BRUSH_H = 32;
+const BRUSH_ALPHA = Array.from({ length: BRUSH_H }, (_, y) => {
+  const d = Math.abs((y + 0.5) / BRUSH_H - 0.5) * 2; // 0 centre … 1 edge
+  return Math.round(255 * Math.min(1, Math.max(0, (1 - d) / 0.25)));
+});
+let brush: Texture | null = null;
+export function brushTexture(): Texture {
+  if (brush) return brush;
+  const c = new OffscreenCanvas(BRUSH_W, BRUSH_H);
+  const g = c.getContext('2d')!;
+  const img = g.createImageData(BRUSH_W, BRUSH_H);
+  for (let y = 0; y < BRUSH_H; y++) for (let x = 0; x < BRUSH_W; x++) img.data.set([255, 255, 255, BRUSH_ALPHA[y]!], (y * BRUSH_W + x) * 4);
+  g.putImageData(img, 0, 0);
+  brush = new Texture({ source: new CanvasSource({ resource: c as unknown as HTMLCanvasElement, label: 'builtin:brush' }) });
+  return brush;
 }

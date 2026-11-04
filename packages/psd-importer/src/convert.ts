@@ -262,6 +262,7 @@ export function convertPsd(psd: Psd, opts: ImportOptions): ImportResult {
     deformers: {},
     physics: defaultPhysicsRig(),
     animations: [],
+    scenes: [],
     expressions: [],
     source: { kind: 'psd', fileName: opts.fileName, assetId: opts.sourceAssetId, importedAt: now },
   };
