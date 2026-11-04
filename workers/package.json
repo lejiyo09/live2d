@@ -1,0 +1,19 @@
+{
+  "name": "@l2s/workers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./psd.worker": "./psd.worker.ts",
+    "./protocol": "./protocol.ts",
+    "./mesh.worker": "./mesh.worker.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@l2s/editor-core": "workspace:*",
+    "@l2s/psd-importer": "workspace:*",
+    "@l2s/mesh-engine": "workspace:*"
+  }
+}

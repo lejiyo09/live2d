@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+test-results
+playwright-report
+*.local
+/samples/*.psd
+# Live2D Cubism Core is proprietary; obtain it from Live2D's official SDK package.
+**/live2dcubismcore*.js
+.vite

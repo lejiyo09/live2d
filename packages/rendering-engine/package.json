@@ -1,0 +1,10 @@
+{
+  "name": "@l2s/rendering-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc -p tsconfig.json" },
+  "dependencies": { "@l2s/editor-core": "workspace:*",
+    "@l2s/deformer-engine": "workspace:*", "pixi.js": "8.22.0" }
+}
