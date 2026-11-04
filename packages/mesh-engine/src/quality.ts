@@ -33,6 +33,7 @@ export interface QualityOptions {
 /** Mesh quality check (spec §5.4). */
 export function checkMeshQuality(mesh: ArtMesh, bounds: Rect, opts: QualityOptions = {}): MeshIssue[] {
   const issues: MeshIssue[] = [];
+  if (mesh.path) return mesh.vertices.length < 4 ? [{ code: 'empty-mesh', severity: 'error', message: 'ArtPath needs at least two control points.' }] : [];
   const v = mesh.vertices;
   const n = v.length / 2;
   const t = mesh.triangles;

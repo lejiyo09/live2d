@@ -305,3 +305,7 @@ code { font-family: var(--mono); font-size: 11px; background: #1a1c21; padding: 
 .expr-chip { display: inline-flex; align-items: center; }
 .expr-editor { padding: 4px 10px 8px; display: grid; gap: 4px; }
 .expr-editor input[type='number'] { width: 60px; }
+.view-switch { display: flex; border-bottom: 1px solid var(--line); height: 24px; }
+.scene-row .tl-lane { background: rgba(255,255,255,.02); }
+.scene-clip { position: absolute; top: 3px; bottom: 3px; background: #2f4f7a; border: 1px solid #4f7fbf; border-radius: 3px; padding: 0 6px; font-size: 11px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: grab; }
+.scene-clip.sel { border-color: #fff; background: #3b6aa6; }

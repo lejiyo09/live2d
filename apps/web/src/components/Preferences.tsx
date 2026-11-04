@@ -10,7 +10,7 @@ const LABELS: Record<string, string> = {
   nudgeL: 'Nudge left', nudgeR: 'Nudge right', nudgeU: 'Nudge up', nudgeD: 'Nudge down', nudgeL10: 'Nudge left ×10', nudgeR10: 'Nudge right ×10', nudgeU10: 'Nudge up ×10', nudgeD10: 'Nudge down ×10',
   deform: 'Deform tool', copyKeyform: 'Copy keyform', pasteKeyform: 'Paste keyform', resetParams: 'Reset parameter values', keyAnim: 'Key changed parameters',
   prevFrame: 'Previous frame', nextFrame: 'Next frame', meshConnect: 'Mesh: connect', meshFlip: 'Mesh: remove/flip edge', meshTriangle: 'Mesh: triangle',
-  meshDeleteTris: 'Mesh: delete triangles', meshUv: 'Mesh: UV mode', bezier: 'Deform: Bézier warp editing', group: 'Group', ungroup: 'Ungroup', delete: 'Delete', deleteAlt: 'Delete (alt)',
+  meshDeleteTris: 'Mesh: delete triangles', meshUv: 'Mesh: UV mode', bezier: 'Deform: Bézier warp editing', pen: 'ArtPath pen', penFinish: 'Pen: finish path', group: 'Group', ungroup: 'Ungroup', delete: 'Delete', deleteAlt: 'Delete (alt)',
   forward: 'Bring forward', backward: 'Send backward', hide: 'Toggle visibility', lock: 'Toggle lock', fit: 'Fit to window', zoom100: 'Zoom 100%', zoomIn: 'Zoom in', zoomOut: 'Zoom out',
 };
 

@@ -88,6 +88,8 @@ export function checkIntegrity(project: Project, availableAssets?: Set<string>):
   for (const ex of project.expressions ?? []) {
     for (const ep of ex.parameters) if (!paramIds.has(ep.parameterId)) issues.push({ severity: 'warning', message: `Expression ${ex.name}: unknown parameter ${ep.parameterId}` });
   }
+  const clipIds = new Set((project.animations ?? []).map((c) => c.id));
+  for (const sc of project.scenes ?? []) for (const e of sc.entries) if (!clipIds.has(e.clipId)) issues.push({ severity: 'warning', message: `Scene ${sc.name}: entry refers to a deleted animation` });
   const groupIds = new Set((project.parameterGroups ?? []).map((g) => g.id));
   for (const prm of project.parameters ?? []) if (prm.groupId && !groupIds.has(prm.groupId)) issues.push({ severity: 'warning', message: `Parameter ${prm.id}: unknown group ${prm.groupId}` });
   for (const c of project.animations ?? []) {

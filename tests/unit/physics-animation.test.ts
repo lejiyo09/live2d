@@ -105,3 +105,32 @@ describe('animation curves', () => {
     expect(reduceKeys([{ t: 0, v: 0, interp: 'linear' }, { t: 1, v: 1, interp: 'linear' }, { t: 2, v: 2, interp: 'linear' }], 1e-6)).toHaveLength(2);
   });
 });
+
+describe('scenes (multi-clip timeline)', () => {
+  it('places clips on tracks, later tracks override, flattens to one clip', async () => {
+    const { addScene, addSceneEntry, moveSceneEntry, sampleScene, flattenScene, deleteClip } = await import('@l2s/animation-engine');
+    const h = new CommandHistory(proj());
+    const a = newClip('turn', 2, 30), b = newClip('nod', 1, 30);
+    h.execute(addClip(a)); h.execute(addClip(b));
+    h.execute(setKey(a.id, 'ParamAngleX', 0, 0)); h.execute(setKey(a.id, 'ParamAngleX', 2, 30));
+    h.execute(setInterpolation(a.id, [{ parameterId: 'ParamAngleX', t: 0 }], 'linear'));
+    h.execute(setKey(b.id, 'ParamAngleX', 0, -10)); h.execute(setKey(b.id, 'ParamAngleY', 0, 5));
+    const sc = addScene('Intro');
+    h.execute(sc.command);
+    const e1 = addSceneEntry(sc.id, a.id, 0, 0); h.execute(e1.command);
+    const e2 = addSceneEntry(sc.id, b.id, 3, 1); h.execute(e2.command);
+    const s = () => h.project.scenes[0]!;
+    expect(s().duration).toBe(5);
+    expect(sampleScene(h.project, s(), 1).ParamAngleX).toBeCloseTo(15);
+    expect(sampleScene(h.project, s(), 2.5)).toEqual({}); // gap
+    expect(sampleScene(h.project, s(), 3.5)).toEqual({ ParamAngleX: -10, ParamAngleY: 5 });
+    // Move the nod over the turn on a higher track: it overrides AngleX there.
+    h.execute(moveSceneEntry(sc.id, e2.id, 1, 1));
+    expect(sampleScene(h.project, s(), 1.5).ParamAngleX).toBe(-10);
+    const flat = flattenScene(h.project, s());
+    expect(evaluateTrack(flat.tracks.find((t) => t.parameterId === 'ParamAngleX')!, 0.5)).toBeCloseTo(7.5, 1);
+    expect(evaluateTrack(flat.tracks.find((t) => t.parameterId === 'ParamAngleX')!, 1.5)).toBeCloseTo(-10, 1);
+    h.execute(deleteClip(b.id));
+    expect(h.project.scenes[0]!.entries).toHaveLength(1);
+  });
+});

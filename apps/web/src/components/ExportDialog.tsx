@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { zip } from 'fflate';
 import { BufferTarget, CanvasSource, Output, QUALITY_HIGH, WebMOutputFormat, canEncodeVideo } from 'mediabunny';
-import { simulateClip } from '@l2s/animation-engine';
+import { flattenScene, simulateClip } from '@l2s/animation-engine';
 import { evaluateModel } from '@l2s/deformer-engine';
 import { editor, log } from '../state/editor.ts';
-import { activeClip, animActions, useAnim } from '../state/anim.ts';
+import { activeClip, activeScene, animActions, useAnim } from '../state/anim.ts';
 
 type Format = 'png' | 'webm';
 
@@ -18,7 +18,9 @@ export function ExportDialog() {
   const [bg, setBg] = useState('#ffffff');
   const [physics, setPhysics] = useState(true);
   const [useRange, setUseRange] = useState(true);
-  const clip = activeClip();
+  const view = useAnim((s) => s.view);
+  const scene = view === 'scene' ? activeScene() : null;
+  const clip = scene ? flattenScene(editor.project, scene) : activeClip();
   if (!open || !clip) return null;
   const p = editor.project;
   const w = Math.round(p.canvas.width * scale), h = Math.round(p.canvas.height * scale);

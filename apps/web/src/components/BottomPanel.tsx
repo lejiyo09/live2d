@@ -3,6 +3,8 @@ import { meshActions, useMesh } from '../state/mesh.ts';
 import { ParameterPanel } from './ParameterPanel.tsx';
 import { AnalyzerPanel } from './AiDialogs.tsx';
 import { TimelinePanel } from './TimelinePanel.tsx';
+import { SceneTimeline } from './SceneTimeline.tsx';
+import { animActions, useAnim } from '../state/anim.ts';
 import { CurveEditor } from './CurveEditor.tsx';
 import { PhysicsPanel } from './PhysicsPanel.tsx';
 
@@ -39,7 +41,7 @@ export function BottomPanel() {
         {tab === 'mesh' && <MeshCheck />}
         {tab === 'params' && <ParameterPanel />}
         {tab === 'analyzer' && <AnalyzerPanel />}
-        {tab === 'timeline' && <TimelinePanel />}
+        {tab === 'timeline' && <TimelineSwitch />}
         {tab === 'curves' && <CurveEditor />}
         {tab === 'physics' && <PhysicsPanel />}
         {tab === 'history' && (
@@ -81,6 +83,19 @@ function MeshCheck() {
           ))}
         </tbody></table>
       )}
+    </div>
+  );
+}
+
+function TimelineSwitch() {
+  const view = useAnim((s) => s.view);
+  return (
+    <div>
+      <div className="view-switch">
+        <button className={view === 'clip' ? 'tab active' : 'tab'} onClick={() => animActions.setView('clip')}>Clip</button>
+        <button className={view === 'scene' ? 'tab active' : 'tab'} onClick={() => animActions.setView('scene')} data-testid="view-scene">Scene</button>
+      </div>
+      {view === 'clip' ? <TimelinePanel /> : <SceneTimeline />}
     </div>
   );
 }

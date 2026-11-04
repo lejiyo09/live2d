@@ -84,6 +84,7 @@ function useMenus(): Array<{ name: string; items: Entry[] }> {
       { label: 'Auto Generate ArtMesh…', run: () => meshActions.openAutoMesh(true), shortcut: 'autoMesh', disabled: !hasDoc },
       { label: 'Edit Mesh', run: meshActions.toggleMeshEdit, shortcut: 'meshEdit', checked: meshMode, disabled: !active && !meshMode },
       { label: 'Create Rectangle Mesh', run: meshActions.createRectMesh, disabled: !active },
+      { label: 'New ArtPath (Pen)', run: meshActions.togglePen, shortcut: 'pen', disabled: !hasDoc },
       'sep',
       { label: 'Retriangulate', run: meshActions.retriangulate, disabled: !anyMesh },
       { label: 'Copy Mesh from Active to Selected', run: () => meshActions.copyFromActive(false), disabled: selLayers.length < 2 },

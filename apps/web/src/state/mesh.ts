@@ -8,7 +8,7 @@ import {
 import { editor, log, useEditor } from './editor.ts';
 import { generateMeshesInWorkers } from './meshPool.ts';
 
-export type ToolMode = 'select' | 'mesh' | 'deform';
+export type ToolMode = 'select' | 'mesh' | 'deform' | 'pen';
 
 export interface MeshCheckRow {
   layerId: NodeId;
@@ -176,6 +176,10 @@ export const meshActions = {
     if (get().mode === 'mesh') meshActions.exitMeshEdit();
     set({ mode: 'deform' });
   },
+  togglePen() {
+    if (get().mode === 'pen') set({ mode: 'select' });
+    else { if (get().mode === 'mesh') meshActions.exitMeshEdit(); set({ mode: 'pen' }); }
+  },
   toggleDeform() {
     if (get().mode === 'deform') set({ mode: 'select' });
     else meshActions.enterDeform();
@@ -255,7 +259,7 @@ export const meshActions = {
 
 // Leave mesh-edit mode when its layer disappears (undo of mesh creation, delete layer).
 useEditor.subscribe((s) => {
-  if (get().mode === 'deform') return;
+  if (get().mode === 'deform' || get().mode === 'pen') return;
   const id = get().editLayerId;
   if (id && (!s.project.nodes[id] || !s.project.meshes[id])) meshActions.exitMeshEdit();
   else if (id) {

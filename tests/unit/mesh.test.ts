@@ -216,3 +216,46 @@ describe('edge, triangle and UV editing (spec §5.2)', () => {
     expect(h.project.meshes.A!.uvs[8]).toBeCloseTo(0.5);
   });
 });
+
+describe('ArtPath (Phase 7)', () => {
+  it('builds a tapered ribbon through the control points and follows keyforms / deformers', async () => {
+    const { buildRibbon, samplePath, createArtPath, addVertex } = await import('@l2s/mesh-engine');
+    const { createWarpDeformer, bindParameter, setWarpKeyform, evaluateModel } = await import('@l2s/deformer-engine');
+    const { STANDARD_PARAMETERS, activeKeyIndex } = await import('@l2s/parameter-engine');
+    const ctrl = [0, 0, 50, 20, 100, 0];
+    const c = samplePath(ctrl, false, 8);
+    expect([c[0], c[1]]).toEqual([0, 0]);
+    expect([c[c.length - 2], c[c.length - 1]]).toEqual([100, 0]);
+    expect(c.length / 2).toBe(17); // 2 segments × 8 + end
+    const r = buildRibbon(ctrl, { width: 10, color: 0, closed: false, taper: false });
+    expect(r.positions.length / 2).toBe(34);
+    expect(Math.hypot(r.positions[0]! - r.positions[2]!, r.positions[1]! - r.positions[3]!)).toBeCloseTo(10);
+    const tapered = buildRibbon(ctrl, { width: 10, color: 0, closed: false, taper: true });
+    expect(Math.hypot(tapered.positions[0]! - tapered.positions[2]!, tapered.positions[1]! - tapered.positions[3]!)).toBeLessThan(2);
+
+    const p = createEmptyProject('ap', 400, 400);
+    p.parameters = STANDARD_PARAMETERS.map((x) => ({ ...x }));
+    const h = new CommandHistory(p);
+    const ap = createArtPath([100, 100, 200, 120, 300, 100]);
+    h.execute(ap.command);
+    expect(h.project.meshes[ap.id]!.path).toBeDefined();
+    expect(h.project.meshes[ap.id]!.triangles).toEqual([]);
+    // Put it under a warp keyed on AngleX and move the warp at +30.
+    const w = createWarpDeformer([ap.id], { cols: 2, rows: 2 });
+    h.execute(w.command);
+    h.execute(bindParameter([w.id], 'ParamAngleX', [-30, 0, 30]));
+    const k = activeKeyIndex(h.project.deformers[w.id]!.form.bindings, { ParamAngleX: 30 });
+    const pts = (h.project.deformers[w.id] as { form: { keyforms: Array<{ points: number[] }> } }).form.keyforms[k]!.points;
+    h.execute(setWarpKeyform(w.id, k, { points: pts.map((v, i) => (i % 2 === 0 ? v + 15 : v)) }));
+    const at = evaluateModel(h.project, { ParamAngleX: 30 }).meshes.get(ap.id)!.positions;
+    expect(at[0]).toBeCloseTo(115, 3);
+    // Insert a control point in the middle: keyforms stay aligned.
+    h.execute(addVertex(ap.id, 150, 112));
+    const m = h.project.meshes[ap.id]!;
+    expect(m.vertices.length / 2).toBe(4);
+    expect(m.vertices.slice(2, 4)).toEqual([150, 112]);
+    expect(m.form!.keyforms[0]!.positions.length).toBe(8);
+    const at2 = evaluateModel(h.project, { ParamAngleX: 30 }).meshes.get(ap.id)!.positions;
+    expect(at2[2]).toBeCloseTo(165, 1); // new point follows the warp too
+  });
+});

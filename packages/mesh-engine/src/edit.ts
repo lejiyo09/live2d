@@ -2,6 +2,7 @@ import { defaultValues } from '@l2s/parameter-engine';
 import { evaluateModel, parentResolved, toLocal } from '@l2s/deformer-engine';
 import { getNode, snapshot, type ArtMesh, type Command, type LayerNode, type NodeId, type Project, type Rect } from '@l2s/editor-core';
 import { insideLoops, segDist, type Pt } from './contour.ts';
+import { pathBounds } from './artpath.ts';
 import { triangulate } from './triangulate.ts';
 
 // ------------------------------------------------------------------ queries
@@ -78,6 +79,7 @@ const triKey = (a: number, b: number, c: number) => [a, b, c].sort((x, y) => x -
 
 /** Rebuild triangles from vertices + outline + user edges (constrained Delaunay), minus deleted triangles. */
 export function retriangulated(mesh: ArtMesh): ArtMesh {
+  if (mesh.path) return mesh;
   const tris = triangulate(mesh.vertices, mesh.boundary, mesh.edges ?? []).triangles;
   if (!mesh.excluded?.length) return { ...mesh, triangles: tris };
   const ex = new Set(mesh.excluded.map(([a, b, c]) => triKey(a, b, c)));
@@ -141,6 +143,19 @@ export function withTrianglesDeleted(mesh: ArtMesh, selected: number[]): { mesh:
  * is inserted into the nearest outline edge so the outline grows to include it.
  */
 export function withVertexAdded(mesh: ArtMesh, bounds: Rect, x: number, y: number): { mesh: ArtMesh; index: number } {
+  if (mesh.path) {
+    // ArtPath: append at the nearer end, or insert into the nearest segment.
+    const v = mesh.vertices, n = v.length / 2;
+    let best = Infinity, at = n;
+    for (let i = 0; i + 1 < n; i++) {
+      const dd = segDist([x, y], [v[i * 2]!, v[i * 2 + 1]!], [v[i * 2 + 2]!, v[i * 2 + 3]!]);
+      if (dd < best) { best = dd; at = i + 1; }
+    }
+    const dStart = Math.hypot(x - v[0]!, y - v[1]!), dEnd = Math.hypot(x - v[n * 2 - 2]!, y - v[n * 2 - 1]!);
+    if (dEnd <= best) at = n; else if (dStart <= best) at = 0;
+    const vertices = [...v.slice(0, at * 2), x, y, ...v.slice(at * 2)];
+    return { mesh: { ...mesh, vertices, uvs: vertices.map(() => 0) }, index: at };
+  }
   const index = mesh.vertices.length / 2;
   const vertices = [...mesh.vertices, x, y];
   const uvs = [...mesh.uvs, (x - bounds.x) / (bounds.width || 1), (y - bounds.y) / (bounds.height || 1)];
@@ -161,6 +176,10 @@ export function withVertexAdded(mesh: ArtMesh, bounds: Rect, x: number, y: numbe
 
 export function withVerticesDeleted(mesh: ArtMesh, indices: number[]): ArtMesh {
   const del = new Set(indices);
+  if (mesh.path) {
+    const vertices = mesh.vertices.filter((_, k) => !del.has(k >> 1));
+    return { ...mesh, vertices, uvs: vertices.map(() => 0) };
+  }
   const n = mesh.vertices.length / 2;
   const map = new Int32Array(n).fill(-1);
   const vertices: number[] = [], uvs: number[] = [];
@@ -348,9 +367,12 @@ export function addVertex(layerId: NodeId, x: number, y: number): Command {
     apply(d) {
       const m = snapshot(d.meshes[layerId]);
       if (!m) return;
-      const added = withVertexAdded(m, layerOf(d, layerId).bounds, x, y).mesh;
-      if (m.form) added.form = { ...m.form, keyforms: m.form.keyforms.map((kf) => ({ ...kf, positions: [...kf.positions, ...keyformForNewVertex(snapshot(d), m, kf.positions, x, y)] })) };
-      if (m.blendShapes) added.blendShapes = m.blendShapes.map((bs) => ({ ...bs, deltas: bs.deltas.map((dl) => ({ ...dl, positions: [...dl.positions, ...deltaForNewVertex(m, dl.positions, x, y)] })) }));
+      const { mesh: added, index } = withVertexAdded(m, layerOf(d, layerId).bounds, x, y);
+      // Insert per-keyform data at the new vertex's index (appended for meshes, may be mid-path for ArtPaths).
+      const ins = (arr: number[], pair: [number, number]) => [...arr.slice(0, index * 2), ...pair, ...arr.slice(index * 2)];
+      if (m.form) added.form = { ...m.form, keyforms: m.form.keyforms.map((kf) => ({ ...kf, positions: ins(kf.positions, keyformForNewVertex(snapshot(d), m, kf.positions, x, y)) })) };
+      if (m.blendShapes) added.blendShapes = m.blendShapes.map((bs) => ({ ...bs, deltas: bs.deltas.map((dl) => ({ ...dl, positions: ins(dl.positions, deltaForNewVertex(m, dl.positions, x, y)) })) }));
+      if (m.path) { const n = d.nodes[layerId]; if (n?.kind === 'layer') n.bounds = pathBounds(added.vertices, m.path); }
       d.meshes[layerId] = added;
       d.updatedAt = new Date().toISOString();
     },

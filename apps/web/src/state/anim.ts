@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import type { AnimationClip, ParameterId } from '@l2s/editor-core';
+import type { AnimationClip, ParameterId, Scene } from '@l2s/editor-core';
 import { defaultValues, resolveValues, type ParameterValues } from '@l2s/parameter-engine';
 import { PhysicsSimulator } from '@l2s/physics-engine';
-import { addClip, clipTime, newClip, sampleClip, setKey, type KeyRef } from '@l2s/animation-engine';
+import { addClip, clipTime, newClip, sampleClip, sampleScene, setKey, type KeyRef } from '@l2s/animation-engine';
 import { editor, log, useEditor, withExpressions } from './editor.ts';
 import { evaluateModel } from '@l2s/deformer-engine';
 
@@ -21,13 +21,32 @@ export interface AnimState {
   /** Onion skin: ghosts at ±onionStep frames (spec §3.1). */
   onion: boolean;
   onionStep: number;
+  /** Timeline shows a single clip or a scene (multi-clip, spec §9.1). */
+  view: 'clip' | 'scene';
+  sceneId: string | null;
 }
 
 export const useAnim = create<AnimState>(() => ({
-  clipId: null, time: 0, playing: false, physicsOn: false, selectedKeys: [], curveTrack: null, exportOpen: false, exporting: null, strands: [], onion: false, onionStep: 5,
+  clipId: null, time: 0, playing: false, physicsOn: false, selectedKeys: [], curveTrack: null, exportOpen: false, exporting: null, strands: [], onion: false, onionStep: 5, view: 'clip', sceneId: null,
 }));
 const set = useAnim.setState;
 const get = useAnim.getState;
+
+export function activeScene(): Scene | null {
+  const p = editor.project;
+  const id = get().sceneId;
+  return p.scenes.find((s) => s.id === id) ?? p.scenes[0] ?? null;
+}
+
+/** What the transport plays: the clip, or the scene as a pseudo-clip (duration / loop / sampling). */
+function playable(): { duration: number; loop: boolean; range?: { start: number; end: number }; fps: number; sample: (t: number) => ParameterValues } | null {
+  if (get().view === 'scene') {
+    const s = activeScene();
+    return s ? { duration: s.duration, loop: s.loop, fps: s.fps, sample: (t) => sampleScene(editor.project, s, t) } : null;
+  }
+  const c = activeClip();
+  return c ? { duration: c.duration, loop: c.loop, range: c.range, fps: c.fps, sample: (t) => sampleClip(c, clipTime(c, t)) } : null;
+}
 
 export function activeClip(): AnimationClip | null {
   const p = editor.project;
@@ -54,9 +73,9 @@ function simulator(): PhysicsSimulator {
 /** Values the runtime feeds into evaluation this frame. */
 function frameValues(dt: number): ParameterValues | null {
   const { playing, physicsOn } = get();
-  const clip = activeClip();
+  const src = playable();
   let values: ParameterValues = { ...useEditor.getState().paramValues };
-  if (playing && clip) values = { ...values, ...sampleClip(clip, clipTime(clip, get().time)) };
+  if (playing && src) values = { ...values, ...src.sample(get().time) };
   values = withExpressions(editor.project, values);
   if (physicsOn && editor.project.physics.settings.length) {
     const s = simulator();
@@ -71,12 +90,12 @@ function loop(now: number) {
   last = now;
   const { playing } = get();
   if (playing) {
-    const clip = activeClip();
-    if (clip) {
+    const src = playable();
+    if (src) {
       let t = get().time + dt;
-      const end = clip.range?.end ?? clip.duration;
+      const start = src.range?.start ?? 0, end = src.range?.end ?? src.duration;
       if (t > end) {
-        if (clip.loop) t = clipTime(clip, t);
+        if (src.loop) t = start + ((t - start) % Math.max(1e-6, end - start));
         else { t = end; set({ playing: false }); }
       }
       set({ time: t });
@@ -105,7 +124,7 @@ export const animActions = {
     editor.setBottomTab('timeline');
   },
   play() {
-    if (!activeClip()) return;
+    if (!playable()) return;
     set({ playing: true });
     ensureLoop();
   },
@@ -120,11 +139,13 @@ export const animActions = {
   toggle() { if (get().playing) animActions.pause(); else animActions.play(); },
   /** Move the playhead; while paused the sliders follow the animation so edits can be keyed. */
   scrub(t: number) {
-    const clip = activeClip();
-    const tt = clip ? Math.min(clip.duration, Math.max(0, t)) : 0;
+    const src = playable();
+    const tt = src ? Math.min(src.duration, Math.max(0, t)) : 0;
     set({ time: tt });
-    if (clip && !get().playing) editor.setParams(sampleClip(clip, tt));
+    if (src && !get().playing) editor.setParams(src.sample(tt));
   },
+  setView(v: 'clip' | 'scene') { set({ view: v, playing: false, time: 0 }); },
+  selectScene(id: string | null) { set({ sceneId: id, time: 0 }); },
   setPhysics(on: boolean) {
     set({ physicsOn: on });
     if (on) { simulator().reset(); ensureLoop(); }

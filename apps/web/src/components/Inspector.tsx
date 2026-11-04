@@ -3,6 +3,7 @@ import { boundsOf, setClipMask, setNodeProps, translateNodes, type BlendMode, ty
 import { isApproximated } from '@l2s/rendering-engine';
 import { editor, useEditor } from '../state/editor.ts';
 import { meshActions, useMesh } from '../state/mesh.ts';
+import { setPathStyle } from '@l2s/mesh-engine';
 import { DeformerInspector, KeyformSection } from './RigInspector.tsx';
 
 const BLEND_MODES: BlendMode[] = [
@@ -161,9 +162,33 @@ function MaskSection({ layerId }: { layerId: string }) {
   );
 }
 
+function PathSection({ layerId }: { layerId: string }) {
+  const mesh = useEditor((s) => s.project.meshes[layerId]);
+  if (!mesh?.path) return null;
+  const st = mesh.path;
+  const hex = `#${st.color.toString(16).padStart(6, '0')}`;
+  return (
+    <>
+      <h4>ArtPath</h4>
+      <Row label="Control points"><span>{mesh.vertices.length / 2}</span></Row>
+      <Row label="Width">
+        <input type="range" min={1} max={80} value={st.width} aria-label="Stroke width" onChange={(e) => editor.run(setPathStyle(layerId, { width: Number(e.target.value) }, `pw:${layerId}`))} onPointerUp={() => editor.sealHistoryStep()} />
+        <span className="num">{st.width}</span>
+      </Row>
+      <Row label="Colour"><input type="color" value={hex} aria-label="Stroke colour" onChange={(e) => editor.run(setPathStyle(layerId, { color: parseInt(e.target.value.slice(1), 16) }, `pc:${layerId}`))} /></Row>
+      <Row label="Closed"><input type="checkbox" checked={st.closed} onChange={(e) => editor.run(setPathStyle(layerId, { closed: e.target.checked }))} aria-label="Closed path" /></Row>
+      <Row label="Taper ends"><input type="checkbox" checked={st.taper} onChange={(e) => editor.run(setPathStyle(layerId, { taper: e.target.checked }))} aria-label="Taper" /></Row>
+      <div className="button-row">
+        <button className="btn" onClick={meshActions.toggleMeshEdit} title="Move / add / delete control points (M)">Edit points</button>
+      </div>
+    </>
+  );
+}
+
 function MeshSection({ layerId }: { layerId: string }) {
   const mesh = useEditor((s) => s.project.meshes[layerId]);
   const project = useEditor((s) => s.project);
+  if (mesh?.path) return <PathSection layerId={layerId} />;
   const editing = useMesh((s) => s.mode === 'mesh' && s.editLayerId === layerId);
   return (
     <>

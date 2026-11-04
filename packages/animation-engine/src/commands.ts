@@ -46,7 +46,13 @@ export function duplicateClip(id: string, newClipId = newId('clip')): { command:
 }
 
 export function deleteClip(id: string): Command {
-  return { label: 'Delete Animation', apply(d) { d.animations = d.animations.filter((c) => c.id !== id); } };
+  return {
+    label: 'Delete Animation',
+    apply(d) {
+      d.animations = d.animations.filter((c) => c.id !== id);
+      for (const s of d.scenes ?? []) s.entries = s.entries.filter((e) => e.clipId !== id);
+    },
+  };
 }
 
 export function setClipProps(id: string, patch: Partial<Pick<AnimationClip, 'name' | 'fps' | 'loop' | 'range'>>): Command {
