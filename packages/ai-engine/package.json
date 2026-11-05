@@ -1,0 +1,21 @@
+{
+  "name": "@l2s/ai-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.4.0",
+    "@l2s/deformer-engine": "workspace:*",
+    "@l2s/editor-core": "workspace:*",
+    "@l2s/mesh-engine": "workspace:*",
+    "@l2s/parameter-engine": "workspace:*",
+    "@l2s/physics-engine": "workspace:*",
+    "@l2s/psd-importer": "workspace:*"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "live2d-studio",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev": "pnpm --filter @l2s/web dev",
+    "build": "pnpm --filter @l2s/web build",
+    "preview": "pnpm --filter @l2s/web preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "e2e": "playwright test",
+    "sample:psd": "node scripts/make-sample-psd.mjs"
+  },
+  "devDependencies": {
+    "@l2s/ai-engine": "workspace:*",
+    "@l2s/animation-engine": "workspace:*",
+    "@l2s/cubism-adapter": "workspace:*",
+    "@l2s/deformer-engine": "workspace:*",
+    "@l2s/editor-core": "workspace:*",
+    "@l2s/mesh-engine": "workspace:*",
+    "@l2s/parameter-engine": "workspace:*",
+    "@l2s/physics-engine": "workspace:*",
+    "@l2s/project-format": "workspace:*",
+    "@l2s/psd-importer": "workspace:*",
+    "@playwright/test": "1.63.0",
+    "ag-psd": "34.1.0",
+    "fflate": "0.8.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@l2s/psd-importer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc -p tsconfig.json" },
+  "dependencies": { "@l2s/editor-core": "workspace:*", "ag-psd": "34.1.0", "fflate": "0.8.3" }
+}

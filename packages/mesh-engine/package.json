@@ -1,0 +1,15 @@
+{
+  "name": "@l2s/mesh-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc -p tsconfig.json" },
+  "dependencies": {
+    "@l2s/editor-core": "workspace:*",
+    "@l2s/deformer-engine": "workspace:*",
+    "@l2s/parameter-engine": "workspace:*",
+    "@kninnug/constrainautor": "4.1.0",
+    "delaunator": "5.1.0"
+  }
+}

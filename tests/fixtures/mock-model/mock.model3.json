@@ -1,0 +1,17 @@
+{
+  "Version": 3,
+  "FileReferences": {
+    "Moc": "mock.moc3",
+    "Textures": [
+      "textures/texture_00.png"
+    ],
+    "Physics": "mock.physics3.json",
+    "Motions": {
+      "Idle": [
+        {
+          "File": "motions/look.motion3.json"
+        }
+      ]
+    }
+  }
+}

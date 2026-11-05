@@ -1,0 +1,38 @@
+{
+  "name": "@l2s/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@l2s/editor-core": "workspace:*",
+    "@l2s/mesh-engine": "workspace:*",
+    "@l2s/project-format": "workspace:*",
+    "@l2s/psd-importer": "workspace:*",
+    "@l2s/rendering-engine": "workspace:*",
+    "@l2s/workers": "workspace:*",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zustand": "5.0.16",
+    "@l2s/parameter-engine": "workspace:*",
+    "@l2s/deformer-engine": "workspace:*",
+    "@l2s/ai-engine": "workspace:*",
+    "@l2s/physics-engine": "workspace:*",
+    "@l2s/animation-engine": "workspace:*",
+    "mediabunny": "1.62.0",
+    "fflate": "0.8.3",
+    "@l2s/cubism-adapter": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "6.2.1",
+    "vite": "8.3.5",
+    "vite-plugin-pwa": "^1.2.0"
+  }
+}
