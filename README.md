@@ -8,6 +8,14 @@
 
 샘플 캐릭터가 미리 열린 호스팅 데모 빌드: `VITE_DEMO=1 VITE_APP_NAME="Rig Studio" pnpm --filter web build --base ./` (데모 빌드는 Live2D Inc.와 혼동되지 않도록 중립적 이름을 사용합니다). 로컬에서는 `/?sample` 또는 `#sample`로 샘플을 바로 열 수 있고, File → Open Sample Character 메뉴도 있습니다.
 
+## Render 배포
+
+저장소 루트의 `render.yaml`(Blueprint)로 정적 사이트를 만듭니다: Render 대시보드 → **New → Blueprint** → 이 저장소 선택.
+
+- `main` 브랜치를 빌드합니다(`pnpm install --frozen-lockfile && pnpm build`, 출력 `apps/web/dist`).
+- 환경 변수: `VITE_DEMO=1`(저장된 프로젝트가 없으면 샘플 캐릭터로 시작), `VITE_APP_NAME`(표시 이름, 기본 `Rig Studio`).
+- 서버가 없는 정적 사이트입니다. 사용자의 PSD·프로젝트는 각 사용자의 브라우저(IndexedDB)에만 저장됩니다. 리깅 어시스턴트의 Claude 연결은 사용자가 직접 넣은 API 키로 브라우저에서 Anthropic API를 직접 호출합니다.
+
 ## 실행
 
 ```bash
