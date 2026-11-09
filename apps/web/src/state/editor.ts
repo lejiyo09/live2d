@@ -6,8 +6,8 @@ import {
 import { PACKAGE_EXTENSION, ProjectStore, checkIntegrity, readPackage, writePackage, type ProjectSummary, type StoredAsset } from '@l2s/project-format';
 import { encodePng, type ImportWarning } from '@l2s/psd-importer';
 import type { StudioRenderer, CameraState, Pose } from '@l2s/rendering-engine';
-import { evaluateModel, type EvaluatedModel } from '@l2s/deformer-engine';
-import { applyExpressions, defaultValues, normalizeValue, resolveValues, type ParameterValues } from '@l2s/parameter-engine';
+import { evaluateModel, importParameterList, type EvaluatedModel } from '@l2s/deformer-engine';
+import { STANDARD_PARAMETERS, STANDARD_PARAMETER_GROUPS, parseParameterCsv, toParameterCsv, applyExpressions, defaultValues, normalizeValue, resolveValues, type ParameterValues } from '@l2s/parameter-engine';
 import { importPsdInWorker, type ImportHandle, type ImportProgress } from './psdImport.ts';
 
 export type LogLevel = 'info' | 'warn' | 'error';
@@ -364,6 +364,11 @@ export const editor = {
         await nextFrame();
       }
       const tUpload = performance.now();
+      // Like a new Cubism model, a fresh import starts with the default parameter list.
+      if (!result.project.parameters.length) {
+        result.project.parameterGroups = STANDARD_PARAMETER_GROUPS.map((g) => ({ ...g }));
+        result.project.parameters = STANDARD_PARAMETERS.map((x) => ({ ...x }));
+      }
       resetDocument(result.project);
       await nextFrame();
       const tSync = performance.now();
@@ -440,6 +445,25 @@ export const editor = {
     await editor.refreshProjectList();
   },
 
+  /** Parameter-list CSV (Cubism parameter-list layout): merge groups and parameters into the project. */
+  async importParameterCsv(file: File) {
+    try {
+      const list = parseParameterCsv(await file.text());
+      if (editor.run(importParameterList(list.groups, list.parameters))) {
+        log('info', `Imported ${list.parameters.length} parameter(s) and ${list.groups.length} group(s) from ${file.name}.`);
+      }
+      for (const w of list.warnings) log('warn', `Parameter list: ${w}`);
+    } catch (e) {
+      log('error', `Parameter list import failed: ${(e as Error).message}`);
+    }
+  },
+
+  exportParameterCsv() {
+    const { project } = get();
+    // BOM so spreadsheet apps read the Korean text as UTF-8.
+    downloadBlob(new Blob(['\uFEFF' + toParameterCsv(project)], { type: 'text/csv;charset=utf-8' }), `${safeName(project.name)}_parameters.csv`);
+  },
+
   async exportPackage() {
     const project = history.project;
     try {
@@ -479,15 +503,15 @@ export const editor = {
     log('error', `Unsupported file type: ${file.name}`);
   },
 
-  /** Loads the bundled, generated sample character (our own test art, not Live2D material). */
+  /** Loads the bundled default character (Himikan). */
   async openSample() {
     try {
-      // Hosts that only serve web media types get a base64 copy (VITE_SAMPLE_URL=…/sample-character.psd.b64.txt).
-      const url = (import.meta.env.VITE_SAMPLE_URL as string | undefined) || `${import.meta.env.BASE_URL}samples/sample-character.psd`;
+      // Hosts that only serve web media types get a base64 copy (VITE_SAMPLE_URL=…/himikan.psd.b64.txt).
+      const url = (import.meta.env.VITE_SAMPLE_URL as string | undefined) || `${import.meta.env.BASE_URL}samples/himikan.psd`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const bytes = url.endsWith('.b64.txt') ? Uint8Array.from(atob((await res.text()).trim()), (c) => c.charCodeAt(0)) : await res.blob();
-      await editor.importPsd(new File([bytes], 'sample-character.psd', { type: 'image/vnd.adobe.photoshop' }));
+      await editor.importPsd(new File([bytes], 'himikan.psd', { type: 'image/vnd.adobe.photoshop' }));
     } catch (e) {
       log('error', `Could not load the sample: ${(e as Error).message}`);
     }

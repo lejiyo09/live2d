@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { STANDARD_PARAMETERS } from '@l2s/parameter-engine';
 import { checkIntegrity, readPackage, writePackage, migrateProject, ProjectVersionError } from '@l2s/project-format';
 import { importPsd, encodePng } from '@l2s/psd-importer';
 import { referencedAssetIds } from '@l2s/editor-core';
@@ -73,7 +74,7 @@ describe('format v3 deformers and parameters', () => {
     const { unzipSync, strFromU8 } = await import('fflate');
     const files = unzipSync(zip);
     expect(JSON.parse(strFromU8(files['deformers/deformers.json']!)).deformers).toHaveLength(1);
-    expect(JSON.parse(strFromU8(files['parameters/parameters.json']!)).parameters).toHaveLength(9);
+    expect(JSON.parse(strFromU8(files['parameters/parameters.json']!)).parameters).toHaveLength(STANDARD_PARAMETERS.length);
     const back = await readPackage(zip);
     expect(back.project).toEqual(h.project);
     expect(checkIntegrity(back.project)).toEqual([]);

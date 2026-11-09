@@ -79,7 +79,7 @@ describe('interop bundle', () => {
     const files = Object.keys(unzipSync(zip)).sort();
     expect(files).toEqual(['My_Char.cdi3.json', 'My_Char.physics3.json', 'README.txt', 'motions/Turn.motion3.json', 'motions/Turn_.motion3.json']);
     expect(report.files.some((f) => f.endsWith('.moc3') || f.endsWith('model3.json'))).toBe(false);
-    expect(JSON.parse(strFromU8(unzipSync(zip)['My_Char.cdi3.json']!)).Parameters).toHaveLength(9);
+    expect(JSON.parse(strFromU8(unzipSync(zip)['My_Char.cdi3.json']!)).Parameters).toHaveLength(STANDARD_PARAMETERS.length);
     expect(projectToCdi3(p).Version).toBe(3);
   });
 });

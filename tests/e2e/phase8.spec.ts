@@ -51,6 +51,8 @@ test('split layer into parts creates a group with one layer per region', async (
   await page.click('text=/Split Layer into Parts/');
   await expect(page.getByTestId('segment-count')).toHaveText('2 part(s)');
   await page.getByTestId('segment-apply').click();
+  // Applying encodes the part images first, so wait for the group to appear.
+  await page.waitForFunction(() => Object.values((window as any).__l2s.useEditor.getState().project.nodes).some((n: any) => n.name === '리본 (parts)'));
   const r = await st<{ group: string; kids: string[]; hidden: boolean }>(page, `(() => {
     const p = e.useEditor.getState().project;
     const g = Object.values(p.nodes).find((n) => n.name === '리본 (parts)');

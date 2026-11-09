@@ -204,11 +204,18 @@ export interface Parameter {
   /** Values wrap around min..max instead of clamping (spec §7.3 parameter repeat). */
   repeat?: boolean;
   groupId?: string;
+  /** Free text, e.g. "+로 눈을 뜨기" (kept for parameter-list CSV round trips). */
+  description?: string;
+  /** GUID from an imported parameter-list CSV, kept for round trips. */
+  guid?: string;
 }
 
 export interface ParameterGroup {
   id: string;
   name: string;
+  /** Label colour as in Cubism parameter lists, e.g. "RED:#903D34". */
+  color?: string;
+  guid?: string;
 }
 
 /** A scene arranges clips on tracks over time (spec §9.1 장면 관리). Later tracks override earlier ones. */

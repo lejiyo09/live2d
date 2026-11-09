@@ -1,17 +1,8 @@
+import { DEFAULT_PARAMETERS } from './csv.ts';
 import type { Expression, Parameter, ParameterId, Project } from '@l2s/editor-core';
 
-/** Standard parameter presets (spec §7.1). IDs follow the Cubism standard parameter naming. */
-export const STANDARD_PARAMETERS: readonly Parameter[] = [
-  { id: 'ParamAngleX', name: '좌우 얼굴 회전', min: -30, max: 30, default: 0 },
-  { id: 'ParamAngleY', name: '상하 얼굴 회전', min: -30, max: 30, default: 0 },
-  { id: 'ParamAngleZ', name: '얼굴 기울기', min: -30, max: 30, default: 0 },
-  { id: 'ParamEyeLOpen', name: '왼쪽 눈 개폐', min: 0, max: 1, default: 1 },
-  { id: 'ParamEyeROpen', name: '오른쪽 눈 개폐', min: 0, max: 1, default: 1 },
-  { id: 'ParamEyeBallX', name: '눈동자 좌우', min: -1, max: 1, default: 0 },
-  { id: 'ParamEyeBallY', name: '눈동자 상하', min: -1, max: 1, default: 0 },
-  { id: 'ParamMouthOpenY', name: '입 개폐', min: 0, max: 1, default: 0 },
-  { id: 'ParamMouthForm', name: '입 모양', min: -1, max: 1, default: 0 },
-];
+/** The default parameter set (spec §7.1), defined by the bundled parameter-list CSV. */
+export const STANDARD_PARAMETERS: readonly Parameter[] = DEFAULT_PARAMETERS;
 
 export type ParameterValues = Record<ParameterId, number>;
 

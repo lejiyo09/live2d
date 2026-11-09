@@ -1,10 +1,10 @@
 import {
   newId, snapshot,
-  type ArtMesh, type Command, type Deformer, type DeformerId, type KeyformGrid, type MeshKeyform, type NodeId, type Parameter,
+  type ArtMesh, type Command, type Deformer, type DeformerId, type KeyformGrid, type MeshKeyform, type NodeId, type Parameter, type ParameterGroup,
   type ParameterId, type Project, type RotationDeformer, type RotationKeyform, type WarpDeformer, type WarpKeyform, type BlendShape,
 } from '@l2s/editor-core';
 import {
-  STANDARD_PARAMETERS, addBinding, blend, zeroLike, defaultValues, gridCoords, gridIndex, insertKey, keyValuesAt, keyformWeights, removeBinding,
+  STANDARD_PARAMETERS, STANDARD_PARAMETER_GROUPS, addBinding, blend, zeroLike, defaultValues, gridCoords, gridIndex, insertKey, keyValuesAt, keyformWeights, removeBinding,
   removeKey, validateParameter, KEY_EPSILON, type ParameterValues,
 } from '@l2s/parameter-engine';
 import { defaultDeformers, evaluateModel, isDeformerAncestor, parentResolved, type EvaluatedModel } from './evaluate.ts';
@@ -286,14 +286,47 @@ export function addParameter(p: Parameter): Command {
   };
 }
 
-/** Add the §7.1 preset parameters that are not defined yet. */
+/** Add the default parameters (and their groups) that are not defined yet. */
 export function addStandardParameters(): Command {
   return {
     label: 'Add Standard Parameters',
+    apply(d) { mergeParameterList(d, STANDARD_PARAMETER_GROUPS, STANDARD_PARAMETERS, false); },
+  };
+}
+
+/**
+ * Import a parameter list (e.g. a Cubism parameter-list CSV). New groups and parameters
+ * are added; existing IDs get the list's name / range / group / description, and their
+ * keys and bindings stay as they are.
+ */
+export function importParameterList(groups: readonly ParameterGroup[], parameters: readonly Parameter[]): Command {
+  return {
+    label: 'Import Parameter List',
     apply(d) {
-      for (const p of STANDARD_PARAMETERS) if (!d.parameters.some((x) => x.id === p.id)) d.parameters.push({ ...p });
+      mergeParameterList(d, groups, parameters, true);
+      d.updatedAt = new Date().toISOString();
     },
   };
+}
+
+function mergeParameterList(d: Project, groups: readonly ParameterGroup[], parameters: readonly Parameter[], update: boolean) {
+  for (const g of groups) {
+    const cur = d.parameterGroups.find((x) => x.id === g.id);
+    if (!cur) d.parameterGroups.push({ ...g });
+    else if (update) Object.assign(cur, g);
+  }
+  for (const p of parameters) {
+    const i = d.parameters.findIndex((x) => x.id === p.id);
+    const next = { ...p };
+    if (next.groupId && !d.parameterGroups.some((g) => g.id === next.groupId)) delete next.groupId;
+    if (i < 0) {
+      const err = validateParameter(next, d.parameters);
+      if (err) throw new Error(`${p.id}: ${err}`);
+      d.parameters.push(next);
+    } else if (update) {
+      d.parameters[i] = { ...d.parameters[i]!, ...next };
+    }
+  }
 }
 
 /** Update a definition; renaming the ID updates every binding. Keys outside the new range are kept. */

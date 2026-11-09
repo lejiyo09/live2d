@@ -1,5 +1,5 @@
 import { resolveDrawOrder, type LayerNode, type NodeId, type PartTag, type Project, type Rect } from '@l2s/editor-core';
-import { suggestPartTag } from '@l2s/psd-importer';
+import { isGuideNode, mirroredSides, suggestPartTag } from '@l2s/psd-importer';
 
 /**
  * Part recognition (spec §10.1). Two deterministic sources are combined:
@@ -25,7 +25,7 @@ export interface PartClassifier {
 const center = (b: Rect) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
 
 /** Category with the folder names of the ancestors (e.g. layer "L" in folder "目_左"). */
-function nameTag(project: Project, layer: LayerNode): { tag: PartTag; via: string } | null {
+function nameTag(project: Project, layer: LayerNode, sides: Map<string, 'Left' | 'Right'>): { tag: PartTag; via: string } | null {
   const own = suggestPartTag(layer.name);
   let cur = layer.parentId;
   const folders: string[] = [];
@@ -43,12 +43,16 @@ function nameTag(project: Project, layer: LayerNode): { tag: PartTag; via: strin
         const side = ft?.category.match(/\.(Left|Right)$/)?.[1];
         if (side) return { tag: { ...own, category: `${own.category}.${side}` }, via: `name "${layer.name}" + folder "${f}"` };
       }
+      // "<" / ">" pairs: side from position (see mirroredSides).
+      const ms = sides.get(layer.id);
+      if (ms) return { tag: { ...own, category: `${own.category}.${ms}` }, via: `name "${layer.name}" (mirrored pair, ${ms.toLowerCase()} on canvas)` };
     }
     return { tag: own, via: `name "${layer.name}"` };
   }
   for (const f of folders) {
     const ft = suggestPartTag(f);
-    if (ft) return { tag: { ...ft, confidence: ft.confidence * 0.75 }, via: `folder "${f}"` };
+    const ms = sides.get(layer.id);
+    if (ft) return { tag: { ...ft, category: ms && !/\.(Left|Right)$/.test(ft.category) ? `${ft.category}.${ms}` : ft.category, confidence: ft.confidence * 0.75 }, via: `folder "${f}"` };
   }
   return null;
 }
@@ -91,9 +95,11 @@ export function recognizeParts(project: Project): PartSuggestion[] {
   const idx = new Map(layers.map((l, i) => [l.id, i]));
   const face = findFace(project, layers);
   const out: PartSuggestion[] = [];
+  const sides = mirroredSides(project);
   for (const l of layers) {
     if (l.partTag?.source === 'user') continue; // never override the user
-    const byName = nameTag(project, l);
+    if (isGuideNode(project, l.id)) continue; // reference drawings, not parts
+    const byName = nameTag(project, l, sides);
     let suggested: PartTag | null = null, reason = '';
     if (byName) { suggested = byName.tag; reason = byName.via; }
     if (face && l !== face) {

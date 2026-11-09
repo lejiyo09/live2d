@@ -1,0 +1,26 @@
+GUID,유형,ID,이름,그룹,최소값,기준값,최대값,반복,설명,라벨색
+fb7f39df-7d87-447d-ae86-66929298e8ee,PARAMETER_GROUP,ParamGroup,XYZ,,,,,,,RED:#903D34
+20bb9ab6-d4bd-4020-ae0b-f74514f06863,PARAMETER_GROUP,ParamGroup2,눈,,,,,,,ORANGE:#7D4B08
+4079d9ca-6836-4209-8705-dd0b1ff3ac87,PARAMETER_GROUP,ParamGroup3,눈썹,,,,,,,YELLOW:#707000
+84a3c06b-91b4-4af6-8e32-026e10b3e469,PARAMETER_GROUP,ParamGroup4,입,,,,,,,GREEN:#2E6330
+beab0034-540d-4a2e-a78a-c53f7dca6389,PARAMETER_GROUP,ParamGroup5,몸,,,,,,,BLUE:#415979
+54aaf680-f141-4e7e-a3e8-7b31bf9ca579,PARAMETER_GROUP,ParamGroup6,물리,,,,,,,PURPLE:#644683
+40435382-db3b-4074-ab8e-80b45f24202f,PARAMETER,ParamAngleX,각도 X,ParamGroup,-30.0,0.0,30.0,false,+로 화면의 오른쪽을 향하기,
+60cf3686-ab6a-4050-a273-c8322b56d9b1,PARAMETER,ParamAngleY,각도 Y,ParamGroup,-30.0,0.0,30.0,false,+로 화면 상단을 향하기,
+3d02668f-0860-4c5e-9e27-2ebd9e690e6c,PARAMETER,ParamAngleZ,각도 Z,ParamGroup,-30.0,0.0,30.0,false,+로 화면의 오른쪽을 향하기,
+04a24f48-1516-4307-bcd3-a2e86c78bac2,PARAMETER,ParamEyeLOpen,왼쪽 눈 깜빡임,ParamGroup2,0.0,1.0,1.0,false,+로 눈을 뜨기,
+8327485e-ed5b-49fb-bab1-6ff8dc4bfb11,PARAMETER,ParamEyeLSmile,왼쪽 눈 미소,ParamGroup2,0.0,0.0,1.0,false,+로 웃는 눈,
+4bbf19fb-f5b6-440d-a4cc-ccb85d561ea5,PARAMETER,ParamEyeROpen,오른쪽 눈 깜빡임,ParamGroup2,0.0,1.0,1.0,false,+로 눈을 뜨기,
+46537ed5-5232-4081-b83c-b31c955b51e0,PARAMETER,ParamEyeRSmile,오른쪽 눈 미소,ParamGroup2,0.0,0.0,1.0,false,+로 웃는 눈,
+c700aa55-ff31-432c-b10b-64772d61e877,PARAMETER,ParamEyeBallX,눈 X,ParamGroup2,-1.0,0.0,1.0,false,+로 오른쪽 보기,
+d2b694fd-4ef2-480b-a9f5-62400f87abc2,PARAMETER,ParamEyeBallY,눈 Y,ParamGroup2,-1.0,0.0,1.0,false,+로 위를 보기,
+09621497-07cc-41d0-ba1f-149f2b30d237,PARAMETER,ParamBrowLY,왼쪽 눈썹 위아래로,ParamGroup3,-1.0,0.0,1.0,false,+로 눈썹을 올리기,
+8738ce30-683a-4c7e-871f-275d43c15156,PARAMETER,ParamBrowLForm,왼쪽 눈썹 변형,ParamGroup3,-1.0,0.0,1.0,false,-로 눈썹을 화나게,
+9c8e3bb9-e68d-4dc0-bd46-e88858709821,PARAMETER,ParamBrowRY,오른쪽 눈썹 위아래로,ParamGroup3,-1.0,0.0,1.0,false,+로 눈썹을 올리기,
+9a1170c3-e81c-415d-b239-21a25f6dc26f,PARAMETER,ParamBrowRForm,오른쪽 눈썹 변형,ParamGroup3,-1.0,0.0,1.0,false,-로 눈썹을 화나게,
+9e396881-3ae5-4a33-b896-aff0be7ed7eb,PARAMETER,ParamMouthForm,입 변형,ParamGroup4,-1.0,0.0,1.0,false,"+로 웃는 입, -로 화가난 입",
+8e73bbb1-dc2e-42bf-a636-d0e33e984886,PARAMETER,ParamMouthOpenY,입 여닫기,ParamGroup4,0.0,0.0,1.0,false,+로 입을 열기,
+c5f13907-4501-4e26-af5e-fce8bba9be75,PARAMETER,ParamBodyAngleX,몸의 회전 X,ParamGroup5,-10.0,0.0,10.0,false,+로 화면의 오른쪽을 향하기,
+cc6904ff-ed9a-4292-ae64-99bbfe78a2f8,PARAMETER,ParamBodyAngleY,몸의 회전 Y,ParamGroup5,-10.0,0.0,10.0,false,+로 화면 위로 움직임,
+784c3ac9-83a4-4733-96f9-0c316bf674e1,PARAMETER,ParamBodyAngleZ,몸의 회전 Z,ParamGroup5,-10.0,0.0,10.0,false,+로 화면의 오른쪽으로 기울이기,
+55a1cab4-5e9b-4549-b47d-1c47972cdb20,PARAMETER,ParamBreath,호흡,ParamGroup5,0.0,0.0,1.0,false,+로 숨 들이마시기,
