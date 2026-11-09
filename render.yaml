@@ -16,10 +16,6 @@ services:
       # Neutral public name so the site is not mistaken for a Live2D Inc. product.
       - key: VITE_APP_NAME
         value: Rig Studio
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
     headers:
       - path: /assets/*
         name: Cache-Control

@@ -320,3 +320,5 @@ button.link { background: none; border: none; padding: 0; color: var(--accent, #
 .empty-state h2 { margin: 0 0 8px; font-size: 18px; }
 .empty-state .row-flex { justify-content: center; gap: 8px; margin: 12px 0; }
 .group-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.error-banner { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); max-width: min(640px, calc(100% - 32px)); display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 6px; background: #4a1f24; color: #ffd9dc; border: 1px solid #8a3a42; z-index: 5; font-size: 13px; }
+.error-banner span { min-width: 0; overflow-wrap: anywhere; }

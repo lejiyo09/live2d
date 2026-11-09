@@ -51,6 +51,8 @@ export interface EditorState {
   leftTab: 'parts' | 'deformers';
   /** Expressions previewed on top of the parameter values (spec §7.3 presets). */
   activeExpressions: string[];
+  /** Latest error, shown on the canvas until dismissed (errors are also in the Debug Console). */
+  lastError: string | null;
 }
 
 const store = new ProjectStore();
@@ -72,6 +74,7 @@ export const useEditor = create<EditorState>(() => ({
   importWarnings: [],
   logs: [],
   saveStatus: 'unsaved-new',
+  lastError: null,
   lastSavedAt: null,
   projects: [],
   projectDialogOpen: false,
@@ -163,11 +166,12 @@ history.subscribe((project) => {
 
 export function log(level: LogLevel, message: string) {
   const entry: LogEntry = { id: ++logSeq, time: new Date().toLocaleTimeString(), level, message };
-  set((s) => ({ logs: [...s.logs.slice(-499), entry] }));
+  set((s) => ({ logs: [...s.logs.slice(-499), entry], ...(level === 'error' ? { lastError: message } : {}) }));
   if (level === 'error') console.error(message);
 }
 
 function resetDocument(project: Project) {
+  set({ lastError: null });
   suppressDirty = true;
   try {
     history.reset(project);
@@ -509,11 +513,13 @@ export const editor = {
       // Hosts that only serve web media types get a base64 copy (VITE_SAMPLE_URL=…/himikan.psd.b64.txt).
       const url = (import.meta.env.VITE_SAMPLE_URL as string | undefined) || `${import.meta.env.BASE_URL}samples/himikan.psd`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const bytes = url.endsWith('.b64.txt') ? Uint8Array.from(atob((await res.text()).trim()), (c) => c.charCodeAt(0)) : await res.blob();
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      const bytes = url.endsWith('.b64.txt') ? Uint8Array.from(atob((await res.text()).trim()), (c) => c.charCodeAt(0)) : new Uint8Array(await res.arrayBuffer());
+      // A host that rewrites unknown paths to index.html answers 200 with HTML instead of the PSD.
+      if (String.fromCharCode(...bytes.slice(0, 4)) !== '8BPS') throw new Error(`${url} is not a PSD file (got ${res.headers.get('content-type') ?? 'unknown content'}, ${bytes.length} bytes). The site may be serving an old or incomplete build — reload the page.`);
       await editor.importPsd(new File([bytes], 'himikan.psd', { type: 'image/vnd.adobe.photoshop' }));
     } catch (e) {
-      log('error', `Could not load the sample: ${(e as Error).message}`);
+      log('error', `Could not load the default character: ${(e as Error).message}`);
     }
   },
 
