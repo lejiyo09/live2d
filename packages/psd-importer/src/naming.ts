@@ -11,14 +11,14 @@ const SIDE_RULES: Array<[RegExp, string]> = [
 ];
 
 const PART_RULES: Array<[RegExp, string]> = [
-  [/앞머리|前髪|bang|fringe|front\s*hair|hair[_\s-]*front/i, 'Hair.Front'],
+  [/앞머리|前髪|bang|fringe|front\s*hair|hair[_\s-]*front|더듬이|아호게|アホ毛|ahoge/i, 'Hair.Front'],
   [/옆머리|横髪|side\s*hair|hair[_\s-]*side/i, 'Hair.Side'],
   [/뒷머리|後ろ髪|後髪|back\s*hair|hair[_\s-]*back/i, 'Hair.Back'],
   [/머리카락|머리|髪|hair/i, 'Hair'],
   [/흰자|白目|eye[_\s-]*white|sclera/i, 'Eye.White'],
   [/홍채|눈동자|동공|瞳|黒目|iris|pupil|eyeball/i, 'Eye.Iris'],
   [/속눈썹|睫毛|まつ毛|lash/i, 'Eye.Lash'],
-  [/눈꺼풀|まぶた|瞼|eyelid/i, 'Eye.Lid'],
+  [/눈꺼풀|쌍커풀|쌍꺼풀|まぶた|瞼|二重|eyelid/i, 'Eye.Lid'],
   [/눈썹|眉|brow/i, 'Eyebrow'],
   [/하이라이트|ハイライト|highlight/i, 'Eye.Highlight'],
   [/눈|目|eye/i, 'Eye'],
@@ -33,7 +33,7 @@ const PART_RULES: Array<[RegExp, string]> = [
   [/팔|腕|arm/i, 'Body.Arm'],
   [/손|手|hand/i, 'Body.Hand'],
   [/다리|脚|足|leg/i, 'Body.Leg'],
-  [/옷|의상|服|cloth|shirt|dress|skirt|jacket/i, 'Clothing'],
+  [/옷|의상|카라|칼라|服|襟|cloth|shirt|dress|skirt|jacket|collar/i, 'Clothing'],
   [/리본|ribbon|bow/i, 'Accessory.Ribbon'],
   [/모자|帽子|hat|cap/i, 'Accessory.Hat'],
   [/악세|액세서리|アクセ|accessor/i, 'Accessory'],
@@ -56,4 +56,77 @@ export function suggestPartTag(name: string): PartTag | undefined {
   // Short generic hits (e.g. a single "눈") are less certain than specific ones.
   const confidence = rule[1].includes('.') ? 0.8 : 0.6;
   return { category, confidence, source: 'name-rule' };
+}
+
+// ------------------------------------------------------------------ pairs and guides
+
+type SideNode = { id: string; kind: string; name: string; parentId: string | null; bounds?: { x: number; y: number; width: number; height: number }; childIds?: string[]; partTag?: PartTag };
+type SideProject = { nodes: Record<string, SideNode> };
+
+/** Folders such as "입 가이드" / "ガイド" / "guide" hold reference drawings that are not model parts. */
+const GUIDE_RE = /가이드|ガイド|guide/i;
+/** Mirrored pairs marked with `<` / `>` (e.g. "눈흰자<" / "눈흰자>", folders "눈<" / "눈>"). */
+const MIRROR_RE = /[<>＜＞]/;
+
+export function isGuideNode(project: SideProject, id: string): boolean {
+  for (let cur: string | null = id; cur; cur = project.nodes[cur]?.parentId ?? null) {
+    const n = project.nodes[cur];
+    if (!n) break;
+    if (n.kind === 'group' && GUIDE_RE.test(n.name)) return true;
+  }
+  return false;
+}
+
+function nodeBounds(project: SideProject, id: string): { x0: number; x1: number } | null {
+  const n = project.nodes[id];
+  if (!n) return null;
+  if (n.kind === 'layer' && n.bounds) return { x0: n.bounds.x, x1: n.bounds.x + n.bounds.width };
+  let out: { x0: number; x1: number } | null = null;
+  for (const c of n.childIds ?? []) {
+    const b = nodeBounds(project, c);
+    if (b) out = out ? { x0: Math.min(out.x0, b.x0), x1: Math.max(out.x1, b.x1) } : b;
+  }
+  return out;
+}
+
+/**
+ * Sides for `<` / `>` pairs. Which symbol means which side is an artist's convention,
+ * so the side comes from position instead: of two otherwise identically named nodes,
+ * the one further left on the canvas is `Left` (the same convention as the geometric
+ * recogniser and the ParamEyeL/R bindings). Descendants inherit their folder's side.
+ */
+export function mirroredSides(project: SideProject): Map<string, 'Left' | 'Right'> {
+  const byKey = new Map<string, string[]>();
+  for (const n of Object.values(project.nodes)) {
+    if (!MIRROR_RE.test(n.name)) continue;
+    const key = `${n.kind}:${n.name.replace(/[<>＜＞]/g, '').trim()}`;
+    byKey.set(key, [...(byKey.get(key) ?? []), n.id]);
+  }
+  const own = new Map<string, 'Left' | 'Right'>();
+  for (const ids of byKey.values()) {
+    if (ids.length !== 2) continue;
+    const c = ids.map((id) => { const b = nodeBounds(project, id); return b ? (b.x0 + b.x1) / 2 : NaN; });
+    if (!Number.isFinite(c[0]) || !Number.isFinite(c[1]) || c[0] === c[1]) continue;
+    const [l, r] = c[0]! < c[1]! ? [ids[0]!, ids[1]!] : [ids[1]!, ids[0]!];
+    own.set(l, 'Left'); own.set(r, 'Right');
+  }
+  const out = new Map<string, 'Left' | 'Right'>();
+  for (const n of Object.values(project.nodes)) {
+    for (let cur: string | null = n.id; cur; cur = project.nodes[cur]?.parentId ?? null) {
+      const s = own.get(cur);
+      if (s) { out.set(n.id, s); break; }
+    }
+  }
+  return out;
+}
+
+/** Applies {@link mirroredSides} to automatic tags without a side, and drops tags inside guide folders. */
+export function refineImportedTags(project: SideProject) {
+  const sides = mirroredSides(project);
+  for (const n of Object.values(project.nodes)) {
+    if (!n.partTag || n.partTag.source === 'user') continue;
+    if (n.kind === 'layer' && isGuideNode(project, n.id)) { delete n.partTag; continue; }
+    const s = sides.get(n.id);
+    if (s && !/\.(Left|Right)$/.test(n.partTag.category)) n.partTag = { ...n.partTag, category: `${n.partTag.category}.${s}` };
+  }
 }

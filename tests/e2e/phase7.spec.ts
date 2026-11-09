@@ -154,7 +154,7 @@ test('expressions (parameter presets) and parameter groups', async ({ page }) =>
   // Parameter groups.
   page.once('dialog', (d) => d.accept('Face'));
   await page.getByTestId('group-new').click();
-  const gid = await st<string>(page, `e.useEditor.getState().project.parameterGroups[0].id`);
+  const gid = await st<string>(page, `e.useEditor.getState().project.parameterGroups.find((g) => g.name === 'Face').id`);
   await page.locator('select[aria-label="Group of ParamAngleX"]').selectOption(gid);
   await expect(page.locator(`[data-group="${gid}"] [data-param=ParamAngleX]`)).toBeVisible();
 
@@ -168,6 +168,6 @@ test('expressions (parameter presets) and parameter groups', async ({ page }) =>
   const files = unzipSync(new Uint8Array(readFileSync(path)));
   expect(Object.keys(files)).toContain('expressions/Smile.exp3.json');
   const cdi = JSON.parse(strFromU8(files['sample-character.cdi3.json']!));
-  expect(cdi.ParameterGroups).toEqual([{ Id: gid, GroupId: '', Name: 'Face' }]);
+  expect(cdi.ParameterGroups).toContainEqual({ Id: gid, GroupId: '', Name: 'Face' });
   expect(cdi.Parameters.find((p: { Id: string }) => p.Id === 'ParamAngleX').GroupId).toBe(gid);
 });

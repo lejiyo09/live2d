@@ -41,7 +41,7 @@ function useMenus(): Array<{ name: string; items: Entry[] }> {
     { name: 'File', items: [
       { label: 'New Project', run: () => void editor.newProject() },
       { label: 'Open PSD / Project…', run: () => actions.openFileDialog(), shortcut: 'open' },
-      { label: 'Open Sample Character', run: () => void editor.openSample() },
+      { label: 'Open Default Character (Himikan)', run: () => void editor.openSample() },
       { label: 'Recent Projects…', run: () => editor.openProjectDialog(true), shortcut: 'projects' },
       { label: 'Import Cubism JSON (motion3 / physics3 / exp3)…', run: () => pickFiles('.json', (f) => void importCubismJson(f)), disabled: !hasDoc },
       { label: 'Preview MOC3 Model…', run: () => moc3Actions.setOpen(true) },
@@ -111,6 +111,8 @@ function useMenus(): Array<{ name: string; items: Entry[] }> {
       { label: 'Parameter Panel', run: () => editor.setBottomTab('params') },
       { label: 'New Parameter…', run: () => { editor.setBottomTab('params'); rigActions.openParamDialog({ mode: 'new' }); } },
       { label: 'Add Standard Parameters', run: rigActions.addStandard },
+      { label: 'Import Parameter List (CSV)…', run: () => openFilePicker({ accept: '.csv,text/csv' }, (f) => void editor.importParameterCsv(f[0]!)), disabled: !hasDoc },
+      { label: 'Export Parameter List (CSV)', run: () => editor.exportParameterCsv(), disabled: !hasDoc },
       { label: 'Reset Parameter Values', run: editor.resetParams, shortcut: 'resetParams' },
       'sep',
       { label: 'Copy Keyform', run: rigActions.copyKeyform, shortcut: 'copyKeyform', disabled: !activeObjectId() },

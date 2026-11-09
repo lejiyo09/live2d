@@ -4,7 +4,7 @@ import {
   type AssetId, type AssetKind, type BlendMode, type GroupNode, type LayerNode, type NodeId, type Project, type Rect,
 } from '@l2s/editor-core';
 import { cloneRgba, isFullyTransparent, multiplyAlpha, toRgba8, type Rgba8 } from './pixels.ts';
-import { suggestPartTag } from './naming.ts';
+import { suggestPartTag, refineImportedTags } from './naming.ts';
 
 export interface RawAsset {
   id: AssetId;
@@ -266,6 +266,7 @@ export function convertPsd(psd: Psd, opts: ImportOptions): ImportResult {
     expressions: [],
     source: { kind: 'psd', fileName: opts.fileName, assetId: opts.sourceAssetId, importedAt: now },
   };
+  if (opts.suggestTags !== false) refineImportedTags(project);
   return {
     project,
     assets,

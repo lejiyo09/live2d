@@ -18,14 +18,14 @@ export function ParameterPanel() {
     <div className="params" data-testid="param-panel">
       <div className="pad row-flex">
         <button className="btn" onClick={() => rigActions.openParamDialog({ mode: 'new' })}>New Parameter</button>
-        <button className="btn" onClick={rigActions.addStandard} title="Spec §7.1 presets">Add Standard Parameters</button>
+        <button className="btn" onClick={rigActions.addStandard} title="Adds the default parameter list and its groups">Add Standard Parameters</button>
         <button className="btn" onClick={() => editor.resetParams()} title="Ctrl+Shift+R">Reset Values</button>
         <button className="btn" onClick={() => { const n = prompt('Group name', `Group ${groups.length + 1}`); if (n) editor.run(addParameterGroup(newId('pgrp'), n)); }} data-testid="group-new">New Group</button>
         <span className="muted">{nObj ? `${nObj} keyable object(s) selected — key buttons apply to them` : 'Select ArtMeshes or deformers to add keys'}</span>
       </div>
       <ExpressionBar />
       {params.length === 0 && <div className="muted pad">No parameters yet. Add the standard set or create your own.</div>}
-      {[...groups.map((g) => ({ id: g.id, name: g.name })), { id: '', name: 'Ungrouped' }].map((g) => {
+      {[...groups.map((g) => ({ id: g.id, name: g.name, color: g.color?.match(/#[0-9a-f]{6}/i)?.[0] })), { id: '', name: 'Ungrouped', color: undefined }].map((g) => {
         const list = params.filter((p) => (p.groupId ?? '') === g.id);
         if (!g.id && !list.length) return null;
         const isCollapsed = !!collapsed[g.id];
@@ -34,7 +34,7 @@ export function ParameterPanel() {
             {(groups.length > 0 || g.id) && (
               <div className="param-group-header">
                 <button className="twisty" onClick={() => setCollapsed({ ...collapsed, [g.id]: !isCollapsed })} aria-label={isCollapsed ? 'Expand group' : 'Collapse group'}>{isCollapsed ? '▸' : '▾'}</button>
-                <strong>{g.name}</strong><span className="muted small"> {list.length}</span>
+                {g.color && <span className="group-swatch" style={{ background: g.color }} aria-hidden="true" />}<strong>{g.name}</strong><span className="muted small"> {list.length}</span>
                 {g.id && <button className="icon-btn" onClick={() => { const n = prompt('Rename group', g.name); if (n) editor.run(renameParameterGroup(g.id, n)); }} aria-label="Rename group">✎</button>}
                 {g.id && <button className="icon-btn" onClick={() => editor.run(deleteParameterGroup(g.id))} aria-label="Delete group">✕</button>}
               </div>
@@ -60,7 +60,7 @@ function ParamRow({ p, first, last, hasObjects }: { p: Parameter; first: boolean
   const pct = (v: number) => ((v - p.min) / (p.max - p.min)) * 100;
   return (
     <div className={bound !== 'none' ? 'param-row bound' : 'param-row'} data-param={p.id}>
-      <div className="param-name" title={p.id}>
+      <div className="param-name" title={p.description ? `${p.id} — ${p.description}` : p.id}>
         <span>{p.name || p.id}</span>
         <small className="muted mono">{p.id}{p.repeat ? ' ⟲' : ''}</small>
       </div>

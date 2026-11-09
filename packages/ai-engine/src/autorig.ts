@@ -1,5 +1,5 @@
 import { snapshot, type ArtMesh, type Command, type LayerNode, type NodeId, type Project } from '@l2s/editor-core';
-import { defaultValues, gridIndex, type ParameterValues } from '@l2s/parameter-engine';
+import { STANDARD_PARAMETERS, STANDARD_PARAMETER_GROUPS, defaultValues, gridIndex, type ParameterValues } from '@l2s/parameter-engine';
 import {
   addStandardParameters, bindParameter, contextValues, createRotationDeformer, createWarpDeformer, evaluateModel, parentResolved,
   setRotationPivot, toLocal,
@@ -8,6 +8,7 @@ import { setMeshes } from '@l2s/mesh-engine';
 import { newPhysicsSetting } from '@l2s/physics-engine';
 import { addParameter } from '@l2s/deformer-engine';
 import { newId } from '@l2s/editor-core';
+import { isGuideNode } from '@l2s/psd-importer';
 
 /**
  * Auto Rig (spec §10.4): a rule engine that turns part tags into a draft rig.
@@ -55,11 +56,15 @@ type Group = 'face' | 'eyeL' | 'eyeR' | 'iris' | 'mouth' | 'mouthOpen' | 'mouthC
 /** Classify tagged layers into rig groups. */
 export function rigGroups(project: Project): Record<Group, LayerNode[]> {
   const g: Record<Group, LayerNode[]> = { face: [], eyeL: [], eyeR: [], iris: [], mouth: [], mouthOpen: [], mouthClosed: [], hairFront: [], hairBack: [], head: [], physics: [] };
+  // Accessories count as head parts only when they sit above the bottom of the face (a hair ribbon, not a chest bow).
+  const faces = Object.values(project.nodes).filter((n): n is LayerNode => n.kind === 'layer' && n.partTag?.category === 'Face.Base');
+  const faceBottom = faces.length ? Math.max(...faces.map((f) => f.bounds.y + f.bounds.height)) : Infinity;
   for (const n of Object.values(project.nodes)) {
-    if (n.kind !== 'layer' || !n.partTag) continue;
+    if (n.kind !== 'layer' || !n.partTag || isGuideNode(project, n.id)) continue;
     const c = n.partTag.category;
     const top = c.split('.')[0]!;
-    const isHead = ['Face', 'Eye', 'Eyebrow', 'Mouth', 'Hair'].includes(top) || /^Accessory\.(Hat|Ribbon)/.test(c);
+    const headAccessory = /^Accessory\.(Hat|Ribbon)/.test(c) && n.bounds.y + n.bounds.height / 2 < faceBottom;
+    const isHead = ['Face', 'Eye', 'Eyebrow', 'Mouth', 'Hair'].includes(top) || headAccessory;
     if (isHead) g.head.push(n);
     if (isHead && !c.startsWith('Hair.Back')) g.face.push(n);
     if (top === 'Eye' && c.endsWith('.Left')) g.eyeL.push(n);
@@ -70,7 +75,7 @@ export function rigGroups(project: Project): Record<Group, LayerNode[]> {
     if (c.startsWith('Mouth.Closed')) g.mouthClosed.push(n);
     if (c.startsWith('Hair.Front') || c.startsWith('Hair.Side')) g.hairFront.push(n);
     if (c.startsWith('Hair.Back')) g.hairBack.push(n);
-    if (top === 'Hair' || c.startsWith('Accessory.Ribbon')) g.physics.push(n);
+    if (top === 'Hair' || (c.startsWith('Accessory.Ribbon') && headAccessory)) g.physics.push(n);
   }
   return g;
 }
@@ -101,7 +106,7 @@ export function buildRigProposal(project: Project, meshesFor: (layers: LayerNode
 
   const steps: RigStep[] = [
     { id: 'meshes', title: 'Generate ArtMeshes', detail: missing.length ? `${missing.length} head layer(s) have no mesh yet (auto mesh, denser for eyes and mouth).` : 'All head layers already have meshes.', targets: ids(missing), enabled: missing.length > 0 },
-    { id: 'parameters', title: 'Add standard parameters', detail: hasStd ? 'Already present.' : 'ParamAngleX/Y/Z, EyeL/ROpen, EyeBallX/Y, MouthOpenY, MouthForm (§7.1).', targets: [], enabled: !hasStd },
+    { id: 'parameters', title: 'Add standard parameters', detail: hasStd ? 'Already present.' : `The default parameter list: ${STANDARD_PARAMETERS.length} parameters in ${STANDARD_PARAMETER_GROUPS.length} groups (angles, eyes, brows, mouth, body, breath).`, targets: [], enabled: !hasStd },
     { id: 'headZ', title: 'Head tilt — rotation deformer "Head Z"', detail: `Pivot at the chin; ParamAngleZ ±30 → ±${DEFAULTS.headTilt}°. Contains all head parts.`, targets: ids(g.head), enabled: g.head.length > 0 },
     { id: 'faceXY', title: 'Face turn — warp "Face XY" (5×5)', detail: 'ParamAngleX × ParamAngleY (3×3 keys). Features bulge toward the turn direction for a rounded look.', targets: ids(g.face), enabled: g.face.length > 0 },
     { id: 'eyes', title: 'Blink — warps "Eye L" / "Eye R"', detail: `ParamEyeLOpen / ParamEyeROpen: eyes close onto the lower lid line. ${g.eyeL.length}+${g.eyeR.length} eye parts.`, targets: ids([...g.eyeL, ...g.eyeR]), enabled: g.eyeL.length + g.eyeR.length > 0, needs: ['faceXY'] },
@@ -298,7 +303,12 @@ export function applyRigProposal(proposal: RigProposal, opts: RigOptions = {}): 
         for (const [parts, pid, name, sway] of [[g.hairFront, 'ParamHairFront', 'Hair Front', 0.06], [g.hairBack, 'ParamHairBack', 'Hair Back', 0.05]] as const) {
           const hair = meshed(parts as LayerNode[]);
           if (!hair.length) continue;
-          if (!d.parameters.some((p) => p.id === pid)) addParameter({ id: pid, name: `${name} sway`, min: -1, max: 1, default: 0 }).apply(d);
+          if (!d.parameters.some((p) => p.id === pid)) {
+            // Cubism standard IDs; grouped under the physics group when the parameter list has one.
+            const physicsGroup = d.parameterGroups.find((x) => /물리|物理|physics/i.test(x.name));
+            const label = pid === 'ParamHairFront' ? '머리 흔들림 앞' : '머리 흔들림 뒤';
+            addParameter({ id: pid, name: label, min: -1, max: 1, default: 0, ...(physicsGroup ? { groupId: physicsGroup.id } : {}) }).apply(d);
+          }
           const w = createWarpDeformer(hair, { name: `${name} Sway`, cols: 3, rows: 3 });
           w.command.apply(d);
           bindParameter([w.id], pid, [-1, 0, 1]).apply(d);

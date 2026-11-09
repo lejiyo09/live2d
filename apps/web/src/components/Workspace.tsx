@@ -146,7 +146,7 @@ export function Workspace({ onReady }: { onReady: () => void }) {
           <p>Drop a layered <b>.psd</b> or <b>.l2studio</b> file here, or</p>
           <div className="row-flex">
             <button className="btn primary" onClick={() => actions.openFileDialog()}>Open PSD…</button>
-            <button className="btn" onClick={() => void editor.openSample()} data-testid="open-sample">Try the sample character</button>
+            <button className="btn" onClick={() => void editor.openSample()} data-testid="open-sample">Open the default character (Himikan)</button>
           </div>
           <p className="muted small">Files stay in this browser (IndexedDB). Nothing is uploaded.<br />Unofficial tool — not affiliated with or endorsed by Live2D Inc.</p>
         </div>

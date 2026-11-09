@@ -6,7 +6,7 @@
 
 ## 데모
 
-샘플 캐릭터가 미리 열린 호스팅 데모 빌드: `VITE_DEMO=1 VITE_APP_NAME="Rig Studio" pnpm --filter web build --base ./` (데모 빌드는 Live2D Inc.와 혼동되지 않도록 중립적 이름을 사용합니다). 로컬에서는 `/?sample` 또는 `#sample`로 샘플을 바로 열 수 있고, File → Open Sample Character 메뉴도 있습니다.
+샘플 캐릭터가 미리 열린 호스팅 데모 빌드: `VITE_DEMO=1 VITE_APP_NAME="Rig Studio" pnpm --filter web build --base ./` (데모 빌드는 Live2D Inc.와 혼동되지 않도록 중립적 이름을 사용합니다). 로컬에서는 `/?sample` 또는 `#sample`로 기본 캐릭터(Himikan, `samples/himikan.psd`)를 바로 열 수 있고, File → Open Default Character 메뉴도 있습니다.
 
 ## Render 배포
 
@@ -15,6 +15,12 @@
 - `main` 브랜치를 빌드합니다(`pnpm install --frozen-lockfile && pnpm build`, 출력 `apps/web/dist`).
 - 환경 변수: `VITE_DEMO=1`(저장된 프로젝트가 없으면 샘플 캐릭터로 시작), `VITE_APP_NAME`(표시 이름, 기본 `Rig Studio`).
 - 서버가 없는 정적 사이트입니다. 사용자의 PSD·프로젝트는 각 사용자의 브라우저(IndexedDB)에만 저장됩니다. 리깅 어시스턴트의 Claude 연결은 사용자가 직접 넣은 API 키로 브라우저에서 Anthropic API를 직접 호출합니다.
+
+## 기본 캐릭터와 기본 파라미터
+
+- **기본 캐릭터:** `samples/himikan.psd` (2000×3000, 70노드). 데모 모드와 `?sample`에서 열립니다. 테스트용 생성 캐릭터 `samples/sample-character.psd`는 테스트 고정 데이터로 남아 있습니다.
+- **기본 파라미터:** `samples/himikan-parameters.csv`(Cubism 파라미터 리스트 CSV 형식: GUID, 유형, ID, 이름, 그룹, 최소값, 기준값, 최대값, 반복, 설명, 라벨색) — 19개 파라미터 · 6개 그룹(XYZ/눈/눈썹/입/몸/물리). 새 PSD를 가져오면 Cubism Editor의 새 모델처럼 이 목록으로 시작합니다. Parameters → Import / Export Parameter List (CSV)로 다른 목록을 병합하거나 내보낼 수 있습니다(기존 ID는 이름·범위·그룹만 갱신, 키·바인딩 유지).
+- **레이어 이름 규칙 추가:** `<` / `>`로 짝지은 레이어·폴더(예: `눈흰자<` / `눈흰자>`)는 캔버스 위치로 좌우를 정합니다(기호의 의미는 작가마다 달라 위치를 기준으로 함). `가이드`/`ガイド`/`guide` 폴더 안의 레이어는 참고용으로 보고 태그·리깅에서 제외합니다. `쌍커풀`(눈꺼풀), `카라`(옷), `더듬이`(앞머리) 규칙 추가. 얼굴보다 아래에 있는 리본은 머리 회전에 따라가지 않습니다.
 
 ## 실행
 
