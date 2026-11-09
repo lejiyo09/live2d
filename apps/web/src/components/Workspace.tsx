@@ -19,6 +19,7 @@ export function Workspace({ onReady }: { onReady: () => void }) {
   const [dragOver, setDragOver] = useState(false);
   const importing = useEditor((s) => s.importing);
   const empty = useEditor((s) => s.project.rootIds.length === 0);
+  const lastError = useEditor((s) => s.lastError);
   const split = useSplit((s) => s.on);
 
   useEffect(() => {
@@ -155,6 +156,13 @@ export function Workspace({ onReady }: { onReady: () => void }) {
       <PreviewBanner />
       <ZoomControls />
       {error && <div className="overlay-msg error">{error}</div>}
+      {lastError && !importing && (
+        <div className="error-banner" role="alert" data-testid="error-banner">
+          <span>{lastError}</span>
+          <button className="btn small" onClick={() => editor.setBottomTab('console')}>Details</button>
+          <button className="icon-btn" onClick={() => useEditor.setState({ lastError: null })} aria-label="Dismiss">✕</button>
+        </div>
+      )}
       {importing && (
         <div className="overlay-msg progress" role="status">
           <div>{phaseLabel(importing.phase)} — {importing.fileName}</div>
